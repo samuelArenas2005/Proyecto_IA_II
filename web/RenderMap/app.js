@@ -13,11 +13,9 @@ window.toggleTheme = function () {
   _lightMode = !_lightMode;
   document.body.classList.toggle('light', _lightMode);
   const icon = document.getElementById('icon-theme');
-  if (icon) icon.className = _lightMode ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+  if (icon) icon.textContent = _lightMode ? '☾' : '☼';
   window.setMapTheme?.(_lightMode);
 };
-
-window._FA = { SUN: 'fa-solid fa-sun', MOON: 'fa-solid fa-moon' };
 
 const NIVEL_LABELS = {
   principiante: 'Principiante · Minimax prof. 2',

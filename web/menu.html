@@ -4,21 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Knight Energy – Menú Principal</title>
-  <meta name="description" content="Juego de caballos sobre tablero de ajedrez con inteligencia artificial." />
+  <meta name="description" content="Juego de caballos con inteligencia artificial estilo medieval." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="menu.css" />
-
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.min.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
-    }
-  }
-  </script>
 </head>
 <body>
 
@@ -29,38 +19,35 @@
 
     <!-- Panel de selección de dificultad -->
     <div id="nivel-panel" class="menu-panel" style="display: none; opacity: 0;">
-      <div class="brand-tag">Knight Energy</div>
-      <h1 class="brand-title">Nivel de<br>Dificultad</h1>
-      <p class="brand-sub">La IA usa minimax con distinta profundidad</p>
+      <div class="brand-tag">Dificultad Mágica</div>
+      <h1 class="brand-title">Elige tu<br>Nivel</h1>
+      <p class="brand-sub">La IA ajustará su profundidad arcana</p>
 
       <div class="menu-sep"></div>
 
       <nav class="menu-buttons" aria-label="Selección de dificultad">
-        <button id="btn-principiante" class="menu-btn menu-btn--active"
-                onclick="seleccionarNivelYJugar('principiante')" title="Profundidad 2">
-          <span class="menu-btn__icon"><i class="fa-solid fa-seedling"></i></span>
-          <span class="menu-btn__label">Principiante</span>
+        <button id="btn-principiante" class="menu-btn" onclick="seleccionarNivelYJugar('principiante')" title="Profundidad 2">
+          <span class="menu-btn__icon">I</span>
+          <span class="menu-btn__label">Aprendiz</span>
           <span class="menu-btn__badge">Prof. 2</span>
         </button>
 
-        <button id="btn-amateur" class="menu-btn menu-btn--active"
-                onclick="seleccionarNivelYJugar('amateur')" title="Profundidad 4">
-          <span class="menu-btn__icon"><i class="fa-solid fa-chess-knight"></i></span>
-          <span class="menu-btn__label">Amateur</span>
+        <button id="btn-amateur" class="menu-btn" onclick="seleccionarNivelYJugar('amateur')" title="Profundidad 4">
+          <span class="menu-btn__icon">II</span>
+          <span class="menu-btn__label">Hechicero</span>
           <span class="menu-btn__badge">Prof. 4</span>
         </button>
 
-        <button id="btn-experto" class="menu-btn menu-btn--active"
-                onclick="seleccionarNivelYJugar('experto')" title="Profundidad 6">
-          <span class="menu-btn__icon"><i class="fa-solid fa-crown"></i></span>
-          <span class="menu-btn__label">Experto</span>
+        <button id="btn-experto" class="menu-btn" onclick="seleccionarNivelYJugar('experto')" title="Profundidad 6">
+          <span class="menu-btn__icon">III</span>
+          <span class="menu-btn__label">Mago Supremo</span>
           <span class="menu-btn__badge">Prof. 6</span>
         </button>
 
-        <div class="menu-sep" style="margin: 10px 0;"></div>
+        <div class="menu-sep"></div>
 
-        <button class="menu-btn menu-btn--return" onclick="regresarAlMenu()" title="Volver">
-          <span class="menu-btn__icon"><i class="fa-solid fa-arrow-left"></i></span>
+        <button class="menu-btn" onclick="regresarAlMenu()" title="Volver">
+          <span class="menu-btn__icon">«</span>
           <span class="menu-btn__label">Regresar</span>
         </button>
       </nav>
@@ -70,55 +57,46 @@
     <div class="menu-panel" id="main-panel">
       <div class="brand-tag">Inteligencia Artificial</div>
       <h1 class="brand-title">Knight<br>Energy</h1>
-      <p class="brand-sub">Caballos, estrellas y rayos sobre el tablero</p>
+      <p class="brand-sub">Caballos oscuros, pociones y reliquias antiguas</p>
 
       <div class="menu-sep"></div>
 
       <nav class="menu-buttons" aria-label="Menú principal">
-        <button id="btn-inicio" class="menu-btn menu-btn--active"
-                onclick="irASeleccionNivel()" title="Iniciar partida">
-          <span class="menu-btn__icon"><i class="fa-solid fa-play"></i></span>
-          <span class="menu-btn__label">Jugar</span>
-          <span class="menu-btn__badge">Disponible</span>
+        <button id="btn-inicio" class="menu-btn" onclick="irASeleccionNivel()" title="Iniciar partida">
+          <span class="menu-btn__label">Adentrarse a la Partida</span>
+          <span class="menu-btn__badge">Listo</span>
         </button>
 
         <button class="menu-btn menu-btn--disabled" disabled title="Próximamente">
-          <span class="menu-btn__icon"><i class="fa-solid fa-book"></i></span>
-          <span class="menu-btn__label">Reglas</span>
-          <span class="menu-btn__badge">Próximamente</span>
+          <span class="menu-btn__label">Grimorio (Reglas)</span>
+          <span class="menu-btn__badge">Comming Soon</span>
         </button>
       </nav>
 
       <div class="session-card">
         <div class="session-card__item">
-          <span class="session-card__icon"><i class="fa-solid fa-robot"></i></span>
-          <div class="session-card__info">
-            <span class="session-card__label">IA (Blanco)</span>
-            <span class="session-card__value">Minimax</span>
-          </div>
+          <span class="session-card__label">IA (Blanco)</span>
+          <span class="session-card__value">Minimax</span>
         </div>
         <div class="session-card__divider"></div>
         <div class="session-card__item">
-          <span class="session-card__icon"><i class="fa-solid fa-user"></i></span>
-          <div class="session-card__info">
-            <span class="session-card__label">Tú (Negro)</span>
-            <span class="session-card__value">Caballo</span>
-          </div>
+          <span class="session-card__label">Tú (Negro)</span>
+          <span class="session-card__value">Jugador</span>
         </div>
       </div>
     </div>
   </main>
 
   <div class="authors-tag">
-    Samuel Arenas Valencia 202341928-3743<br>
-    María Juliana Saavedra 2023-3743<br>
-    Alejandro Libardo Quintero 2023-3743<br>
-    Juan David Rincón 202332032-3743
+    Samuel Arenas V. 202341928<br>
+    María J. Saavedra 2023-3743<br>
+    Alejandro L. Quintero 2023-3743<br>
+    Juan D. Rincón 2023-3743
   </div>
   <div class="version-tag">Knight Energy v1.0</div>
 
   <script src="/eel.js" onerror="console.warn('eel.js no disponible')"></script>
   <script src="api.js"></script>
-  <script type="module" src="menu.js"></script>
+  <script src="menu.js"></script>
 </body>
 </html>

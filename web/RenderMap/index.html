@@ -4,28 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Knight Energy – Tablero</title>
-  <meta name="description" content="Tablero isométrico 8×8 de Knight Energy con Three.js." />
+  <meta name="description" content="Tablero 2D 8×8 de Knight Energy." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="style.css" />
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.min.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
-    }
-  }
-  </script>
 </head>
 <body>
 
-  <div id="map-canvas"></div>
-
+  <!-- ── Top-bar ──────────────────────────────────── -->
   <header class="top-bar">
     <div class="top-bar__left">
       <button id="btn-back" class="btn-back" title="Volver al menú" onclick="irAlMenu()">
-        <i class="fa-solid fa-arrow-left"></i>
+        &laquo;
       </button>
       <span class="logo-text">Knight <em>Energy</em></span>
       <div class="header-divider"></div>
@@ -36,99 +26,83 @@
     </div>
     <div class="top-bar__right">
       <button id="btn-theme" class="btn-theme" title="Cambiar tema" onclick="toggleTheme()">
-        <i id="icon-theme" class="fa-solid fa-sun"></i>
+        <span id="icon-theme">☼</span>
       </button>
     </div>
   </header>
 
-  <div class="player-hud player-hud--white medieval-panel">
-    <div class="player-hud__badge"><i class="fa-solid fa-chess-knight"></i> Caballo Blanco · IA</div>
-    <div class="stat-row">
-      <div class="stat-row__head">
-        <span class="stat-row__label"><i class="fa-solid fa-star"></i> Puntos</span>
-        <span class="stat-row__value" id="white-points">0</span>
-      </div>
-      <div class="stat-bar"><div class="stat-bar__fill stat-bar__fill--points" id="white-points-bar"></div></div>
-    </div>
-    <div class="stat-row">
-      <div class="stat-row__head">
-        <span class="stat-row__label"><i class="fa-solid fa-flask"></i> Energía</span>
-        <span class="stat-row__value" id="white-energy">7</span>
-      </div>
-      <div class="stat-bar"><div class="stat-bar__fill stat-bar__fill--energy" id="white-energy-bar"></div></div>
-    </div>
-  </div>
+  <!-- ── Layout principal (tablero | panel info) ── -->
+  <div class="game-layout">
 
-  <div class="player-hud player-hud--black medieval-panel">
-    <div class="player-hud__badge"><i class="fa-solid fa-chess-knight"></i> Caballo Negro · Tú</div>
-    <div class="stat-row">
-      <div class="stat-row__head">
-        <span class="stat-row__label"><i class="fa-solid fa-star"></i> Puntos</span>
-        <span class="stat-row__value" id="black-points">0</span>
-      </div>
-      <div class="stat-bar"><div class="stat-bar__fill stat-bar__fill--points" id="black-points-bar"></div></div>
-    </div>
-    <div class="stat-row">
-      <div class="stat-row__head">
-        <span class="stat-row__label"><i class="fa-solid fa-flask"></i> Energía</span>
-        <span class="stat-row__value" id="black-energy">7</span>
-      </div>
-      <div class="stat-bar"><div class="stat-bar__fill stat-bar__fill--energy" id="black-energy-bar"></div></div>
-    </div>
-  </div>
+    <!-- Sección tablero (izquierda) -->
+    <section class="board-section">
+      <div id="map-canvas"></div>
+    </section>
 
-  <div class="right-panels-container">
-    <div class="map-legend medieval-panel">
-      <div class="map-legend__header" onclick="toggleLegend()">
-        <p class="map-legend__title">Grimorio · Leyenda</p>
-        <i id="legend-arrow" class="fa-solid fa-chevron-down legend-arrow"></i>
-      </div>
-      <div id="legend-content" class="legend-body">
-        <div class="legend-item"><span class="legend-dot legend-dot--light"></span> Casilla clara de piedra</div>
-        <div class="legend-item"><span class="legend-dot legend-dot--dark"></span> Casilla oscura de piedra</div>
-        <div class="legend-item"><span class="legend-dot legend-dot--snitch"></span> Snitch dorada — otorga puntos al pisarla</div>
-        <div class="legend-item"><span class="legend-dot legend-dot--potion"></span> Poción — restaura energía al pisarla</div>
-        <div class="legend-item"><span class="legend-dot legend-dot--move"></span> Casilla verde — movimiento válido (L)</div>
-        <p class="legend-note">Cada movimiento cuesta 1 de energía. Sin energía pierdes el turno (−3 pts).</p>
-      </div>
-    </div>
+    <!-- Panel de información (derecha) -->
+    <aside class="info-panel">
 
-    <div class="map-legend medieval-panel" id="status-panel">
-      <p class="map-legend__title">Crónicas de la partida</p>
+      <!-- ── Jugadores VS ───────────────────────── -->
+      <div class="duel-block">
+
+        <div class="duel-player">
+          <div class="duel-player__name duel-player__name--white">IA (Blanco)</div>
+          <div class="duel-stat-row">
+            <span class="duel-icon">★</span>
+            <div class="hp-bar-track hp-bar-track--points">
+              <div class="hp-bar-fill hp-bar-fill--points" id="white-points-bar"></div>
+            </div>
+            <span class="duel-val" id="white-points">0</span>
+          </div>
+          <div class="duel-stat-row">
+            <span class="duel-icon">⚡</span>
+            <div class="hp-bar-track hp-bar-track--energy">
+              <div class="hp-bar-fill hp-bar-fill--energy" id="white-energy-bar"></div>
+            </div>
+            <span class="duel-val" id="white-energy">7</span>
+          </div>
+        </div>
+
+        <div class="duel-vs">VS</div>
+
+        <div class="duel-player duel-player--right">
+          <div class="duel-player__name duel-player__name--black">Tú (Negro)</div>
+          <div class="duel-stat-row duel-stat-row--rtl">
+            <span class="duel-val" id="black-points">0</span>
+            <div class="hp-bar-track hp-bar-track--points">
+              <div class="hp-bar-fill hp-bar-fill--points" id="black-points-bar"></div>
+            </div>
+            <span class="duel-icon">★</span>
+          </div>
+          <div class="duel-stat-row duel-stat-row--rtl">
+            <span class="duel-val" id="black-energy">7</span>
+            <div class="hp-bar-track hp-bar-track--energy">
+              <div class="hp-bar-fill hp-bar-fill--energy" id="black-energy-bar"></div>
+            </div>
+            <span class="duel-icon">⚡</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Separador ──────────────────────────── -->
+      <div class="info-sep"></div>
+
+      <!-- ── Estado de la partida ───────────────── -->
       <div id="game-status" class="game-status">Cargando partida...</div>
-    </div>
+
+    </aside>
   </div>
 
-  <div class="map-controls">
-    <button class="map-btn" id="btn-new-game" title="Nueva partida" onclick="nuevaPartida()">
-      <i class="fa-solid fa-rotate-right"></i>
-    </button>
-    <div class="controls-sep"></div>
-    <button class="map-btn" id="btn-zoom-in" title="Acercar">
-      <i class="fa-solid fa-magnifying-glass-plus"></i>
-    </button>
-    <button class="map-btn" id="btn-zoom-out" title="Alejar">
-      <i class="fa-solid fa-magnifying-glass-minus"></i>
-    </button>
-    <button class="map-btn" id="btn-reset-cam" title="Restablecer vista">
-      <i class="fa-solid fa-house"></i>
-    </button>
-  </div>
 
-  <div class="map-hint">
-    <i class="fa-solid fa-hand-pointer"></i>
-    Clic en casilla verde para mover · Scroll o botones para zoom
-  </div>
-
+  <!-- Toast -->
   <div class="toast" id="toast"><span id="toast-msg"></span></div>
 
+  <!-- Modal fin del juego -->
   <div id="game-over-modal" class="report-modal">
     <div class="report-modal__card medieval-panel">
       <div class="report-modal__header">
         <h3 id="game-over-title">Fin del juego</h3>
-        <button id="btn-close-game-over" title="Cerrar">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <button id="btn-close-game-over" title="Cerrar">✕</button>
       </div>
       <div id="game-over-content" class="report-modal__content"></div>
       <button class="medieval-btn" onclick="nuevaPartida()">Jugar de nuevo</button>
@@ -138,6 +112,6 @@
   <script src="/eel.js"></script>
   <script src="../api.js"></script>
   <script src="app.js"></script>
-  <script type="module" src="map.js"></script>
+  <script src="map.js"></script>
 </body>
 </html>

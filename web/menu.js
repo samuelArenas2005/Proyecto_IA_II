@@ -1,250 +1,305 @@
-import * as THREE from 'three';
+'use strict';
+/* ══════════════════════════════════════════════════════
+   menu.js – Fondo 2D top-down animado (sin Three.js)
+   Tablero de ajedrez con piezas flotando suavemente
+══════════════════════════════════════════════════════ */
 
-const TILE = 2;
 const GRID = 8;
-const OFFSET = (GRID * TILE) / 2;
+const ASSET_BASE = 'assets/sprints/';
 
-const LIGHT_SQ = 0xf0d9b5;
-const DARK_SQ  = 0xb58863;
+// Colores del tablero menú (un poco más oscuros/misteriosos que el juego)
+const ML  = '#2a2218'; // fondo exterior
+const MT1 = '#3d3020'; // casilla clara (oscura para el menú bg)
+const MT2 = '#1e180e'; // casilla oscura
 
-function mm(geo, color, opts = {}) {
-  return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color, ...opts }));
-}
-function em(geo, color, intensity = 0.85) {
-  return mm(geo, color, { emissive: color, emissiveIntensity: intensity });
-}
-function darken(hex, f) {
-  const r = ((hex >> 16) & 0xff) * f | 0;
-  const g = ((hex >> 8) & 0xff) * f | 0;
-  const b = (hex & 0xff) * f | 0;
-  return (r << 16) | (g << 8) | b;
-}
+let _cvs, _ctx;
+let _spr = {};
+let _cellSize = 0;
+let _bx = 0, _by = 0;
+let _float = 0;
 
-function createKnight(color) {
-  const g = new THREE.Group();
-  const base = mm(new THREE.CylinderGeometry(0.35, 0.42, 0.12, 12), darken(color, 0.55));
-  base.position.y = 0.06;
-  const body = mm(new THREE.BoxGeometry(0.55, 0.45, 0.35), color);
-  body.position.set(0, 0.38, 0.05);
-  const neck = mm(new THREE.BoxGeometry(0.22, 0.35, 0.18), color);
-  neck.position.set(0.12, 0.72, 0.12);
-  neck.rotation.z = -0.35;
-  const head = mm(new THREE.BoxGeometry(0.28, 0.22, 0.2), color);
-  head.position.set(0.24, 0.95, 0.18);
-  head.rotation.z = -0.5;
-  g.add(base, body, neck, head);
-  return g;
-}
+// Piezas decorativas que se mueven por el tablero
+const _deco = [
+  { r: 0, c: 1, type: 'white', vr:  0.004, vc:  0.003 },
+  { r: 7, c: 6, type: 'black', vr: -0.003, vc: -0.004 },
+  { r: 2, c: 4, type: 'white', vr:  0.002, vc: -0.003 },
+];
+// Coleccionables decorativos
+const _items = [
+  { r: 2, c: 2, type: 'snitch', phase: 0.0 },
+  { r: 5, c: 5, type: 'snitch', phase: 1.2 },
+  { r: 4, c: 1, type: 'snitch', phase: 2.4 },
+  { r: 3, c: 3, type: 'potion', phase: 0.8 },
+  { r: 6, c: 1, type: 'potion', phase: 2.1 },
+];
 
-function createStar() {
-  const shape = new THREE.Shape();
-  const spikes = 5;
-  const outer = 0.28;
-  const inner = 0.12;
-  for (let i = 0; i < spikes * 2; i++) {
-    const r = i % 2 === 0 ? outer : inner;
-    const a = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2;
-    const x = Math.cos(a) * r;
-    const y = Math.sin(a) * r;
-    if (i === 0) shape.moveTo(x, y);
-    else shape.lineTo(x, y);
-  }
-  shape.closePath();
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: false });
-  const star = em(geo, 0xffd43b, 1.1);
-  star.rotation.x = -Math.PI / 2;
-  star.position.y = 0.35;
-  return star;
+async function loadSprites() {
+  const defs = {
+    tileWhite: `${ASSET_BASE}bloque_blanco_ajedrez_sprint.png`,
+    tileBlack: `${ASSET_BASE}bloque_gris_ajedez_sprint.png`,
+    jugador: `${ASSET_BASE}jugador.png`,
+  };
+  await Promise.all(Object.entries(defs).map(([k, src]) =>
+    new Promise(res => {
+      const img = new Image();
+      img.onload  = () => { _spr[k] = img; res(); };
+      img.onerror = () => res();
+      img.src = src;
+    })
+  ));
 }
 
-function createBolt() {
-  const g = new THREE.Group();
-  const bolt = em(new THREE.BoxGeometry(0.08, 0.35, 0.08), 0xffe066, 1.2);
-  bolt.position.y = 0.35;
-  const bolt2 = bolt.clone();
-  bolt2.rotation.y = Math.PI / 2;
-  g.add(bolt, bolt2);
-  return g;
+function computeLayout() {
+  const w = _cvs.width, h = _cvs.height;
+  _cellSize = Math.ceil(Math.max(w, h) * 1.1 / GRID); // Fill + bleed
+  _bx = Math.round((w - _cellSize * GRID) / 2);
+  _by = Math.round((h - _cellSize * GRID) / 2);
 }
 
-function buildChessScene() {
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x141824);
-  scene.fog = new THREE.Fog(0x141824, 70, 200);
+function drawMenuBoard() {
+  const ctx = _ctx;
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      const isLight = (r + c) % 2 === 0;
+      const x = _bx + c * _cellSize;
+      const y = _by + r * _cellSize;
+      const img = isLight ? _spr.tileWhite : _spr.tileBlack;
 
-  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-  const sun = new THREE.DirectionalLight(0xfff4dd, 1.8);
-  sun.position.set(20, 35, 15);
-  scene.add(sun);
-  const fill = new THREE.DirectionalLight(0xaac8ff, 0.6);
-  fill.position.set(-12, 12, 18);
-  scene.add(fill);
-
-  const board = new THREE.Group();
-  scene.add(board);
-
-  const tileGeo = new THREE.BoxGeometry(TILE * 0.98, 0.18, TILE * 0.98);
-  const ground = mm(new THREE.PlaneGeometry(GRID * TILE + 6, GRID * TILE + 6), 0x1a2030);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.set(OFFSET, -0.12, OFFSET);
-  board.add(ground);
-
-  const demoStars = [[1, 3, 5], [4, 6, 8], [6, 2, 4]];
-  const demoBolts = [[2, 5, 3], [5, 1, 4]];
-
-  for (let row = 0; row < GRID; row++) {
-    for (let col = 0; col < GRID; col++) {
-      const light = (row + col) % 2 === 0;
-      const tile = mm(tileGeo, light ? LIGHT_SQ : DARK_SQ);
-      tile.position.set(col * TILE + TILE / 2, 0.09, row * TILE + TILE / 2);
-      board.add(tile);
-
-      const x = col * TILE + TILE / 2;
-      const z = row * TILE + TILE / 2;
-
-      demoStars.forEach(([r, c, v]) => {
-        if (r === row && c === col) {
-          const star = createStar();
-          star.position.set(x, 0, z);
-          board.add(star);
-        }
-      });
-      demoBolts.forEach(([r, c, v]) => {
-        if (r === row && c === col) {
-          const bolt = createBolt();
-          bolt.position.set(x, 0, z);
-          board.add(bolt);
-        }
-      });
+      if (img) {
+        ctx.drawImage(img, x, y, _cellSize, _cellSize);
+        // Oscurecer todo el tablero ligeramente porque es el menú
+        ctx.fillStyle = isLight ? 'rgba(30,20,10,0.45)' : 'rgba(20,15,5,0.7)';
+        ctx.fillRect(x, y, _cellSize, _cellSize);
+      } else {
+        ctx.fillStyle = isLight ? MT1 : MT2;
+        ctx.fillRect(x, y, _cellSize, _cellSize);
+      }
     }
   }
-
-  const whiteKnight = createKnight(0xf8f8f2);
-  whiteKnight.position.set(2 * TILE + TILE / 2, 0, 1 * TILE + TILE / 2);
-  board.add(whiteKnight);
-
-  const blackKnight = createKnight(0x2b2b2b);
-  blackKnight.position.set(5 * TILE + TILE / 2, 0, 6 * TILE + TILE / 2);
-  board.add(blackKnight);
-
-  board.position.set(-OFFSET, 0, -OFFSET);
-  return { scene, board, whiteKnight, blackKnight };
+  // faint golden grid lines
+  ctx.strokeStyle = 'rgba(201,169,97,0.07)';
+  ctx.lineWidth = 1;
+  for (let r = 0; r <= GRID; r++) {
+    ctx.beginPath();
+    ctx.moveTo(_bx, _by + r * _cellSize);
+    ctx.lineTo(_bx + GRID * _cellSize, _by + r * _cellSize);
+    ctx.stroke();
+  }
+  for (let c = 0; c <= GRID; c++) {
+    ctx.beginPath();
+    ctx.moveTo(_bx + c * _cellSize, _by);
+    ctx.lineTo(_bx + c * _cellSize, _by + GRID * _cellSize);
+    ctx.stroke();
+  }
 }
 
-(function initBackground() {
-  const container = document.getElementById('bg-canvas');
-  const W = window.innerWidth;
-  const H = window.innerHeight;
-  const { scene, whiteKnight, blackKnight } = buildChessScene();
+function drawDecoPiece(rf, cf, isWhite) {
+  const ctx = _ctx;
+  const x = _bx + cf * _cellSize + _cellSize / 2;
+  const y = _by + rf * _cellSize + _cellSize / 2;
+  const r = _cellSize * 0.34;
 
-  const frust = 24;
-  const aspect = W / H;
-  const camera = new THREE.OrthographicCamera(
-    -frust * aspect / 2, frust * aspect / 2, frust / 2, -frust / 2, 0.1, 400
-  );
-  camera.zoom = 1.55;
-  camera.updateProjectionMatrix();
-  window._menuCamera = camera;
+  ctx.save();
+  ctx.shadowColor = isWhite ? 'rgba(255,255,230,0.35)' : 'rgba(140,100,255,0.35)';
+  ctx.shadowBlur  = 18;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  const gr = ctx.createRadialGradient(x - r * 0.2, y - r * 0.2, r * 0.05, x, y, r);
+  if (isWhite) {
+    gr.addColorStop(0, 'rgba(255,255,240,0.55)');
+    gr.addColorStop(1, 'rgba(180,160,120,0.2)');
+  } else {
+    gr.addColorStop(0, 'rgba(140,100,255,0.45)');
+    gr.addColorStop(1, 'rgba(30,20,60,0.15)');
+  }
+  ctx.fillStyle = gr;
+  ctx.fill();
+  ctx.strokeStyle = isWhite ? 'rgba(201,169,97,0.45)' : 'rgba(160,120,255,0.45)';
+  ctx.lineWidth = _cellSize * 0.035;
+  ctx.stroke();
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(W, H);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  container.appendChild(renderer.domElement);
+  ctx.shadowBlur = 0;
+  ctx.font = `${_cellSize * 0.38}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = isWhite ? 'rgba(80,50,20,0.6)' : 'rgba(201,169,97,0.6)';
+  ctx.fillText('♞', x, y + _cellSize * 0.02);
+  ctx.restore();
+}
 
-  let orbit = Math.PI / 4;
-  const ORBIT_R = 42;
-  const ORBIT_H = 38;
+function drawCustomOrb(ctx, x, y, s, colorType) {
+  const r = s / 2;
+  
+  ctx.save();
+  // Aura
+  const auraColor = colorType === 'gold' ? 'rgba(255,212,59,0.5)' : 'rgba(34,211,238,0.5)';
+  ctx.shadowColor = auraColor;
+  ctx.shadowBlur = 15;
 
-  window.addEventListener('resize', () => {
-    const nW = window.innerWidth;
-    const nH = window.innerHeight;
-    const nA = nW / nH;
-    camera.left = -frust * nA / 2;
-    camera.right = frust * nA / 2;
-    camera.updateProjectionMatrix();
-    renderer.setSize(nW, nH);
+  // Base
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  const gr = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+  if (colorType === 'gold') {
+    gr.addColorStop(0, '#fff3cd');
+    gr.addColorStop(0.3, '#f5ba00');
+    gr.addColorStop(0.8, '#a36d00');
+    gr.addColorStop(1, '#4a3000');
+  } else {
+    gr.addColorStop(0, '#cffafe');
+    gr.addColorStop(0.3, '#06b6d4');
+    gr.addColorStop(0.8, '#0891b2');
+    gr.addColorStop(1, '#164e63');
+  }
+  ctx.fillStyle = gr;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Brillo
+  ctx.beginPath();
+  ctx.ellipse(x - r * 0.2, y - r * 0.35, r * 0.4, r * 0.15, Math.PI / -8, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fill();
+
+  // Detalles
+  if (colorType === 'gold') {
+    ctx.lineWidth = s * 0.05;
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.9, y);
+    ctx.bezierCurveTo(x - r * 2.2, y - r * 0.8, x - r * 1.5, y - r * 1.8, x - r * 0.2, y - r * 0.5);
+    ctx.fill(); ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(x + r * 0.9, y);
+    ctx.bezierCurveTo(x + r * 2.2, y - r * 0.8, x + r * 1.5, y - r * 1.8, x + r * 0.2, y - r * 0.5);
+    ctx.fill(); ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.3, y - r * 0.9);
+    ctx.lineTo(x + r * 0.3, y - r * 0.9);
+    ctx.lineTo(x + r * 0.25, y - r * 1.2);
+    ctx.lineTo(x - r * 0.25, y - r * 1.2);
+    ctx.fillStyle = '#8d6e63';
+    ctx.fill();
+    ctx.strokeStyle = '#3e2723';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawDecoItem(r, c, type, phase) {
+  const ctx = _ctx;
+  const x = _bx + c * _cellSize + _cellSize / 2;
+  const y = _by + r * _cellSize + _cellSize / 2;
+  const fy = Math.sin(_float + phase) * (_cellSize * 0.05);
+  const s = Math.min(_cellSize * 0.5, 45);
+
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+
+  // Halo anillo
+  ctx.beginPath();
+  ctx.arc(x, y + fy + s * 0.6, s * 0.5, 0, Math.PI * 2);
+  ctx.strokeStyle = type === 'snitch' ? 'rgba(255,212,59,0.3)' : 'rgba(34,211,238,0.3)';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+
+  drawCustomOrb(ctx, x, y + fy, s, type === 'snitch' ? 'gold' : 'cyan');
+  
+  ctx.restore();
+}
+
+function menuLoop() {
+  if (!_cvs) return;
+  const ctx = _ctx;
+
+  // Clear
+  ctx.clearRect(0, 0, _cvs.width, _cvs.height);
+  _float += 0.018;
+
+  drawMenuBoard();
+
+  // Items decorativos
+  _items.forEach(it => drawDecoItem(it.r, it.c, it.type, it.phase));
+
+  // Piezas que se "mueven" suavemente (posición flotante continua)
+  _deco.forEach(d => {
+    d.r = (d.r + d.vr + GRID) % GRID;
+    d.c = (d.c + d.vc + GRID) % GRID;
+    drawDecoPiece(d.r, d.c, d.type === 'white');
   });
 
-  let t = 0;
-  function loop() {
-    requestAnimationFrame(loop);
-    t += 0.01;
-    orbit += 0.00025;
-    whiteKnight.position.y = Math.sin(t) * 0.04;
-    blackKnight.position.y = Math.sin(t + 1.2) * 0.04;
-    camera.position.set(
-      Math.cos(orbit) * ORBIT_R,
-      ORBIT_H,
-      Math.sin(orbit) * ORBIT_R
-    );
-    camera.lookAt(0, 0, 0);
-    renderer.render(scene, camera);
-  }
-  loop();
-})();
+  requestAnimationFrame(menuLoop);
+}
 
+// ── API pública ───────────────────────────────────────────
 window.irASeleccionNivel = function () {
-  const mainPanel = document.getElementById('main-panel');
+  const mainPanel  = document.getElementById('main-panel');
   const nivelPanel = document.getElementById('nivel-panel');
   mainPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-  mainPanel.style.opacity = '0';
+  mainPanel.style.opacity   = '0';
   mainPanel.style.transform = 'translateY(-20px)';
   setTimeout(() => {
-    mainPanel.style.display = 'none';
-    nivelPanel.style.display = 'flex';
+    mainPanel.style.display   = 'none';
+    nivelPanel.style.display  = 'flex';
     nivelPanel.offsetHeight;
     nivelPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-    nivelPanel.style.opacity = '1';
-    nivelPanel.style.transform = 'translateY(0)';
+    nivelPanel.style.opacity    = '1';
+    nivelPanel.style.transform  = 'translateY(0)';
   }, 400);
 };
 
 window.regresarAlMenu = function () {
-  const mainPanel = document.getElementById('main-panel');
+  const mainPanel  = document.getElementById('main-panel');
   const nivelPanel = document.getElementById('nivel-panel');
   nivelPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-  nivelPanel.style.opacity = '0';
-  nivelPanel.style.transform = 'translateY(20px)';
+  nivelPanel.style.opacity    = '0';
+  nivelPanel.style.transform  = 'translateY(20px)';
   setTimeout(() => {
-    nivelPanel.style.display = 'none';
-    mainPanel.style.display = 'flex';
+    nivelPanel.style.display  = 'none';
+    mainPanel.style.display   = 'flex';
     mainPanel.offsetHeight;
     mainPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-    mainPanel.style.opacity = '1';
-    mainPanel.style.transform = 'translateY(0)';
+    mainPanel.style.opacity    = '1';
+    mainPanel.style.transform  = 'translateY(0)';
   }, 400);
 };
 
 window.seleccionarNivelYJugar = async function (nivel) {
-  const root = document.getElementById('menu-root');
-  const bgEl = document.getElementById('bg-canvas');
+  const root    = document.getElementById('menu-root');
   const overlay = document.getElementById('overlay');
-  const camera = window._menuCamera;
-  const DURATION = 1100;
-  const startTime = performance.now();
-  const startZoom = camera ? camera.zoom : 1.55;
-  const targetZoom = startZoom * 4.5;
-
-  // Aquí el frontend guardará el nivel y transicionará, ya no llamamos al backend
   localStorage.setItem('knight_nivel_seleccionado', nivel);
 
-  root.style.transition = `opacity ${DURATION * 0.55}ms ease`;
-  overlay.style.transition = `opacity ${DURATION * 0.7}ms ease`;
-  root.style.opacity = '0';
+  root.style.transition    = 'opacity 0.5s ease';
+  overlay.style.transition = 'opacity 0.5s ease';
+  root.style.opacity    = '0';
   overlay.style.opacity = '0';
-  bgEl.style.transition = `filter ${DURATION * 0.85}ms ease`;
-  bgEl.style.filter = 'blur(0px) brightness(1) saturate(1)';
 
-  function animateZoom(now) {
-    const t = Math.min((now - startTime) / DURATION, 1);
-    const eased = t * t * t;
-    if (camera) {
-      camera.zoom = startZoom + (targetZoom - startZoom) * eased;
-      camera.updateProjectionMatrix();
-    }
-    if (t < 1) requestAnimationFrame(animateZoom);
-    else window.location.href = 'RenderMap/index.html';
-  }
-  requestAnimationFrame(animateZoom);
+  setTimeout(() => { window.location.href = 'RenderMap/index.html'; }, 520);
 };
+
+// ── Inicialización ────────────────────────────────────────
+(async function initMenuBg() {
+  const container = document.getElementById('bg-canvas');
+  if (!container) return;
+
+  _cvs = document.createElement('canvas');
+  _cvs.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+  container.appendChild(_cvs);
+  _ctx = _cvs.getContext('2d');
+
+  function resize() {
+    _cvs.width  = window.innerWidth;
+    _cvs.height = window.innerHeight;
+    computeLayout();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  await loadSprites();
+  menuLoop();
+})();

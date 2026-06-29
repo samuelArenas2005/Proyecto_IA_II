@@ -1,555 +1,674 @@
-import * as THREE from 'three';
-
+'use strict';
 /* ══════════════════════════════════════════════════════════════
-   map.js – Tablero 8×8 isométrico · Knight Energy
-   Texturas pixel art · vista isométrica limpia
+   map.js – Tablero 8×8 · Vista 2D Top-Down · Knight Energy
+   Canvas 2D puro, sin Three.js. Estilo chess.com medieval.
 ══════════════════════════════════════════════════════════════ */
 
-const TILE = 2;
 const GRID = 8;
-const OFFSET = (GRID * TILE) / 2;
 const ASSET_BASE = '../assets/sprints/';
 
-const HIGHLIGHT = 0x69db7c;
-const VALID_RING = 0x51cf66;
-
-const CAM_TARGET = new THREE.Vector3(0, 0, 0);
-const CAM_POSITION = new THREE.Vector3(28, 32, 28);
-const DEFAULT_ZOOM = 0.78;
-const MIN_ZOOM = 0.55;
-const MAX_ZOOM = 2.2;
-const ZOOM_STEP = 1.12;
-const FRUST_SIZE = 12;
-const TILE_HEIGHT = 0.18;
-const PIECE_Y = TILE_HEIGHT;
+// ── Colores del tablero ──────────────────────────────
+const LIGHT  = '#f0d9b5';
+const DARK   = '#b58863';
+const BG_COL = '#1a1714';
 
 window.__gameState = null;
 window.__sceneData = {};
 
-function mm(geo, color, opts = {}) {
-  return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color, ...opts }));
-}
-function em(geo, color, intensity = 0.9) {
-  return mm(geo, color, { emissive: color, emissiveIntensity: intensity });
-}
-function darken(hex, f) {
-  const r = ((hex >> 16) & 0xff) * f | 0;
-  const g = ((hex >> 8) & 0xff) * f | 0;
-  const b = (hex & 0xff) * f | 0;
-  return (r << 16) | (g << 8) | b;
-}
+// Estado interno del renderizador
+let _canvas, _ctx;
+let _sprites  = {};
+let _cellSize = 80;
+let _bx = 0, _by = 0;   // board origin (px)
+let _zoom = 1.0;
+const MIN_ZOOM = 0.6, MAX_ZOOM = 1.8;
 
-function boardToWorld(row, col) {
-  return { x: col * TILE + TILE / 2, z: row * TILE + TILE / 2 };
-}
+// Animación de piezas
+let _wAnim = null;   // { fromR, fromC, toR, toC, start, dur }
+let _bAnim = null;
+const ANIM_DUR = 340; // ms
 
-function loadTexture(path) {
-  return new Promise((resolve, reject) => {
-    new THREE.TextureLoader().load(
-      path,
-      (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.magFilter = THREE.NearestFilter;
-        tex.minFilter = THREE.NearestFilter;
-        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-        resolve(tex);
-      },
-      undefined,
-      reject
-    );
-  });
-}
+// Partículas 2D
+let _particles = [];
 
-async function loadAssets() {
-  const [white, gray, snitch, potion, jugador] = await Promise.all([
-    loadTexture(`${ASSET_BASE}bloque_blanco_ajedrez_sprint.png`),
-    loadTexture(`${ASSET_BASE}bloque_gris_ajedez_sprint.png`),
-    loadTexture(`${ASSET_BASE}sprint_stich_dorada.png`),
-    loadTexture(`${ASSET_BASE}sprints_pocion.png`),
-    loadTexture(`${ASSET_BASE}jugador.png`),
-  ]);
-  return { white, gray, snitch, potion, jugador };
-}
+// Highlights casillas válidas
+let _validMoves = [];
 
-function tileTopMaterial(baseTex, row, col, sideTint) {
-  const map = baseTex.clone();
-  map.repeat.set(0.5, 0.5);
-  map.offset.set((col % 2) * 0.5, (row % 2) * 0.5);
-  const sideMat = new THREE.MeshLambertMaterial({ color: sideTint });
-  const topMat = new THREE.MeshLambertMaterial({ map, color: 0xffffff });
-  return [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
+// Fase de flotación para coleccionables
+let _float = 0;
+
+let _busy      = false;
+let _animating = false;
+
+// ── Cargar sprites ───────────────────────────────────
+async function loadSprites() {
+  const defs = {
+    tileWhite: `${ASSET_BASE}bloque_blanco_ajedrez_sprint.png`,
+    tileBlack: `${ASSET_BASE}bloque_gris_ajedez_sprint.png`,
+    jugador: `${ASSET_BASE}jugador.png`,
+  };
+  const out = {};
+  await Promise.all(Object.entries(defs).map(([k, src]) =>
+    new Promise(res => {
+      const img = new Image();
+      img.onload  = () => { out[k] = img; res(); };
+      img.onerror = () => { out[k] = null; res(); };
+      img.src = src;
+    })
+  ));
+  return out;
 }
 
-function createTexturedTile(row, col, isLight, tex) {
-  const geo = new THREE.BoxGeometry(TILE, TILE_HEIGHT, TILE);
-  const sideTint = isLight ? 0xc8b898 : 0x5a5348;
-  const materials = tileTopMaterial(isLight ? tex.white : tex.gray, row, col, sideTint);
-  const tile = new THREE.Mesh(geo, materials);
-  const { x, z } = boardToWorld(row, col);
-  tile.position.set(x, TILE_HEIGHT / 2, z);
-  tile.userData = { row, col, type: 'tile' };
-  return tile;
+// ── Layout sin zoom (fijo y cómodo por defecto) ─────
+function computeLayout() {
+  const w = _canvas.width;
+  const h = _canvas.height;
+  // Padding cómodo: 60px vertical, 40px lateral
+  const padV = 60;
+  const padH = 40;
+  const avW = w - padH * 2;
+  const avH = h - padV * 2;
+  // Calculamos el tamaño para que quepa bien el grid
+  _cellSize = Math.floor(Math.min(avW / GRID, avH / GRID));
+  // Limitar el tamaño máximo a algo agradable (por ej 85px max) si sobra mucho
+  _cellSize = Math.min(_cellSize, 90);
+  
+  const bpx = _cellSize * GRID;
+  _bx = Math.floor((w - bpx) / 2);
+  _by = Math.floor((h - bpx) / 2);
 }
 
-function createCollectible(groupName, spriteTex, scaleW, scaleH) {
-  const g = new THREE.Group();
-  g.name = groupName;
-
-  const map = spriteTex.clone();
-  const mat = new THREE.SpriteMaterial({
-    map,
-    transparent: true,
-    alphaTest: 0.08,
-    depthWrite: false,
-  });
-  const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(scaleW, scaleH, 1);
-  sprite.position.y = 0.45 + scaleH * 0.2;
-  sprite.center.set(0.5, 0.38);
-  g.add(sprite);
-  return g;
+function cellCenter(row, col) {
+  return { x: _bx + col * _cellSize + _cellSize / 2,
+           y: _by + row * _cellSize + _cellSize / 2 };
 }
 
-function createSnitchMesh(_value, tex) {
-  return createCollectible('star', tex.snitch, 0.72, 0.72);
+function hitCell(px, py) {
+  const col = Math.floor((px - _bx) / _cellSize);
+  const row = Math.floor((py - _by) / _cellSize);
+  if (row < 0 || row >= GRID || col < 0 || col >= GRID) return null;
+  return [row, col];
 }
 
-function createPotionMesh(_value, tex) {
-  const img = tex.potion.image;
-  const aspect = img && img.height ? img.width / img.height : 0.55;
-  const h = 0.76;
-  const w = Math.min(h * aspect, 0.46);
-  return createCollectible('bolt', tex.potion, w, h);
-}
+// ── Dibujo del tablero con assets de textura ───────────
+function drawBoard() {
+  const ctx = _ctx;
 
-function createKnightMesh(color) {
-  const g = new THREE.Group();
-  g.name = 'knight';
-  const base = mm(new THREE.CylinderGeometry(0.35, 0.42, 0.12, 12), darken(color, 0.55));
-  base.position.y = 0.06;
-  const body = mm(new THREE.BoxGeometry(0.55, 0.45, 0.35), color);
-  body.position.set(0, 0.38, 0.05);
-  const neck = mm(new THREE.BoxGeometry(0.22, 0.35, 0.18), color);
-  neck.position.set(0.12, 0.72, 0.12);
-  neck.rotation.z = -0.35;
-  const head = mm(new THREE.BoxGeometry(0.28, 0.22, 0.2), color);
-  head.position.set(0.24, 0.95, 0.18);
-  head.rotation.z = -0.5;
-  g.add(base, body, neck, head);
-  return g;
-}
+  // Sombra exterior
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.85)';
+  ctx.shadowBlur  = 30;
+  ctx.shadowOffsetY = 10;
+  ctx.fillStyle   = '#181410';
+  ctx.fillRect(_bx - 8, _by - 8, GRID * _cellSize + 16, GRID * _cellSize + 16);
+  ctx.restore();
 
-/** Jugador en 2.5D: sprite pixel art orientado a la cámara isométrica */
-function createPlayerPiece(tex) {
-  const g = new THREE.Group();
-  g.name = 'knight';
-  g.userData.isSpritePiece = true;
-
-  const shadow = mm(new THREE.CircleGeometry(0.32, 16), 0x000000, {
-    transparent: true,
-    opacity: 0.25,
-    depthWrite: false,
-  });
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.position.y = 0.02;
-  g.add(shadow);
-
-  const map = tex.jugador.clone();
-  const mat = new THREE.SpriteMaterial({
-    map,
-    transparent: true,
-    alphaTest: 0.06,
-    depthWrite: false,
-  });
-  const sprite = new THREE.Sprite(mat);
-  const img = tex.jugador.image;
-  const aspect = img && img.height ? img.width / img.height : 1.15;
-  const h = 1.0;
-  const w = Math.min(h * aspect, 1.12);
-  sprite.scale.set(w, h, 1);
-  sprite.position.y = h * 0.4;
-  sprite.center.set(0.5, 0.32);
-  g.userData.sprite = sprite;
-  g.userData.baseScaleX = w;
-  g.add(sprite);
-  return g;
-}
-
-function facePiece(piece, dx, dz) {
-  if (piece.userData.isSpritePiece && piece.userData.sprite) {
-    const sprite = piece.userData.sprite;
-    const base = piece.userData.baseScaleX;
-    if (Math.abs(dx) > 0.02) {
-      sprite.scale.x = dx >= 0 ? base : -base;
+  // Dibujar casillas
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      const isLight = (r + c) % 2 === 0;
+      const x = _bx + c * _cellSize;
+      const y = _by + r * _cellSize;
+      
+      const img = isLight ? _sprites.tileWhite : _sprites.tileBlack;
+      
+      if (img) {
+        ctx.drawImage(img, x, y, _cellSize, _cellSize);
+        // Oscurecer ligeramente las casillas oscuras si la imagen la hace ver plana
+        if (!isLight) {
+          ctx.fillStyle = 'rgba(0,0,0,0.15)';
+          ctx.fillRect(x, y, _cellSize, _cellSize);
+        }
+      } else {
+        ctx.fillStyle = isLight ? LIGHT : DARK;
+        ctx.fillRect(x, y, _cellSize, _cellSize);
+      }
     }
-    return;
   }
-  if (dx !== 0 || dz !== 0) {
-    piece.rotation.y = Math.atan2(-dz, dx);
+
+  // Border temático (doble línea gruesa)
+  ctx.strokeStyle = '#c9a961'; // Acento dorado
+  ctx.lineWidth   = 4;
+  ctx.strokeRect(_bx - 2, _by - 2, GRID * _cellSize + 4, GRID * _cellSize + 4);
+  ctx.strokeStyle = '#3e2723';
+  ctx.lineWidth   = 6;
+  ctx.strokeRect(_bx - 7, _by - 7, GRID * _cellSize + 14, GRID * _cellSize + 14);
+
+  // Coordenadas (a–h, 8–1)
+  const fSize = Math.max(12, _cellSize * 0.18);
+  ctx.font         = `bold ${fSize}px Cinzel, serif`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = 'rgba(201,169,97,0.6)';
+  for (let r = 0; r < GRID; r++) {
+    ctx.fillText(String(GRID - r),
+      _bx - fSize * 1.1,
+      _by + r * _cellSize + _cellSize / 2);
+  }
+  for (let c = 0; c < GRID; c++) {
+    ctx.fillText(String.fromCharCode(97 + c),
+      _bx + c * _cellSize + _cellSize / 2,
+      _by + GRID * _cellSize + fSize * 1.2);
   }
 }
 
+// ── Casillas válidas (highlights) ─────────────────────
+function drawHighlights() {
+  const ctx = _ctx;
+  for (const [row, col] of _validMoves) {
+    const { x, y } = cellCenter(row, col);
+    const r = _cellSize * 0.24;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(80,220,110,0.8)';
+    ctx.shadowBlur  = 14;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(105,219,124,0.38)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(81,207,102,0.9)';
+    ctx.lineWidth   = 2.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ── Aura por valor ───────────────────────────
+// Snitch: valores 2,3,4,5,6,8,9
+function snitchGlow(value) {
+  if (value >= 8) return { color: '#ff6b00', blur: 30, ring: 'rgba(255,140,0,0.6)', label: '#fff7e6' };
+  if (value >= 6) return { color: '#f59f00', blur: 22, ring: 'rgba(245,159,0,0.5)',  label: '#ffe8a1' };
+  if (value >= 4) return { color: '#ffd43b', blur: 15, ring: 'rgba(255,212,59,0.4)',  label: '#fff3cd' };
+  return               { color: '#fde68a', blur:  9, ring: 'rgba(253,230,138,0.3)', label: '#fef9e3' };
+}
+// Potion: valores 2,3,4,5
+function potionGlow(value) {
+  if (value >= 5) return { color: '#06b6d4', blur: 28, ring: 'rgba(6,182,212,0.65)',  label: '#cffafe' };
+  if (value >= 4) return { color: '#22d3ee', blur: 20, ring: 'rgba(34,211,238,0.55)', label: '#e0f9fd' };
+  if (value >= 3) return { color: '#67e8f9', blur: 13, ring: 'rgba(103,232,249,0.4)', label: '#ecfeff' };
+  return               { color: '#a5f3fc', blur:  8, ring: 'rgba(165,243,252,0.3)', label: '#f0feff' };
+}
+
+
+// ── Dibujo 3D simulado para Snitch y Poción ──────────────────
+function drawCustomOrb(ctx, x, y, s, colorType, valueText) {
+  const r = s / 2;
+  
+  ctx.save();
+  // 1. Aura
+  const auraColor = colorType === 'gold' ? 'rgba(255,212,59,0.7)' : 'rgba(34,211,238,0.7)';
+  ctx.shadowColor = auraColor;
+  ctx.shadowBlur = 20;
+
+  // 2. Base del orbe con degradado radial simulando iluminación esférica
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  const gr = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+  if (colorType === 'gold') {
+    gr.addColorStop(0, '#fff3cd');
+    gr.addColorStop(0.3, '#f5ba00');
+    gr.addColorStop(0.8, '#a36d00');
+    gr.addColorStop(1, '#4a3000');
+  } else {
+    gr.addColorStop(0, '#cffafe');
+    gr.addColorStop(0.3, '#06b6d4');
+    gr.addColorStop(0.8, '#0891b2');
+    gr.addColorStop(1, '#164e63');
+  }
+  ctx.fillStyle = gr;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // 3. Brillo especular (Highlight superior)
+  ctx.beginPath();
+  ctx.ellipse(x - r * 0.2, y - r * 0.35, r * 0.4, r * 0.15, Math.PI / -8, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fill();
+
+  // 4. Si es Snitch (gold), dibujarle unas alitas muy sutiles a los lados
+  if (colorType === 'gold') {
+    ctx.lineWidth = s * 0.05;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    
+    // Ala izquierda
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.9, y);
+    ctx.bezierCurveTo(x - r * 2.2, y - r * 0.8, x - r * 1.5, y - r * 1.8, x - r * 0.2, y - r * 0.5);
+    ctx.fill(); ctx.stroke();
+    // Ala derecha
+    ctx.beginPath();
+    ctx.moveTo(x + r * 0.9, y);
+    ctx.bezierCurveTo(x + r * 2.2, y - r * 0.8, x + r * 1.5, y - r * 1.8, x + r * 0.2, y - r * 0.5);
+    ctx.fill(); ctx.stroke();
+  } else {
+    // Si es poción (cyan), dibujarle un tapón de corcho arriba
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.3, y - r * 0.9);
+    ctx.lineTo(x + r * 0.3, y - r * 0.9);
+    ctx.lineTo(x + r * 0.25, y - r * 1.2);
+    ctx.lineTo(x - r * 0.25, y - r * 1.2);
+    ctx.fillStyle = '#8d6e63';
+    ctx.fill();
+    ctx.strokeStyle = '#3e2723';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // 5. Etiqueta / Número arriba del orbe (no en el centro, para que se lea mejor)
+  ctx.font = `bold ${r * 0.8}px Cinzel, serif`;
+  ctx.textAlign = 'center'; 
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = colorType === 'gold' ? '#ffe8a1' : '#e0f9fd';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+  ctx.strokeText(valueText, x, y);
+  ctx.fillText(valueText, x, y);
+  
+  ctx.restore();
+}
+
+// ── Coleccionables (snitch y poción) ──────────────────
+function drawCollectibles(state) {
+  const ctx = _ctx;
+  const stars  = state?.stars  || {};
+  const pots   = state?.energy_tiles || {};
+
+  // Tamaño fijo
+  const SPRITE_MAX = 48;
+
+  Object.entries(stars).forEach(([key, val], i) => {
+    const [row, col] = key.split(',').map(Number);
+    const { x, y } = cellCenter(row, col);
+    const fy   = Math.sin(_float + i * 1.1) * (_cellSize * 0.04);
+    const glow = snitchGlow(val);
+    const s    = Math.min(_cellSize * 0.55, SPRITE_MAX);
+
+    ctx.save();
+    // Halo de anillo bajo el orbe
+    ctx.beginPath();
+    ctx.arc(x, y + fy + s * 0.6, s * 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = glow.ring;
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    // Orbe estilizado 3D (dorado)
+    drawCustomOrb(ctx, x, y + fy, s, 'gold', String(val));
+  });
+
+  Object.entries(pots).forEach(([key, val], i) => {
+    const [row, col] = key.split(',').map(Number);
+    const { x, y } = cellCenter(row, col);
+    const fy   = Math.sin(_float + i * 1.4 + 2) * (_cellSize * 0.04);
+    const glow = potionGlow(val);
+    const s    = Math.min(_cellSize * 0.55, SPRITE_MAX);
+
+    ctx.save();
+    // Halo inferior
+    ctx.beginPath();
+    ctx.arc(x, y + fy + s * 0.6, s * 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = glow.ring;
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    // Orbe estilizado 3D (cian)
+    drawCustomOrb(ctx, x, y + fy, s, 'cyan', '+' + val);
+  });
+}
+
+// ── Pieza de caballero ────────────────────────────────
+function drawKnight(x, y, isWhite, glowing) {
+  const ctx = _ctx;
+  const r = _cellSize * 0.39;
+
+  ctx.save();
+  ctx.shadowColor = isWhite ? 'rgba(255,255,220,0.8)' : 'rgba(120,80,240,0.75)';
+  ctx.shadowBlur  = glowing ? 28 : 14;
+
+  // Círculo base
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  const gr = ctx.createRadialGradient(x - r * 0.25, y - r * 0.25, r * 0.05, x, y, r);
+  if (isWhite) {
+    gr.addColorStop(0, '#ffffff');
+    gr.addColorStop(0.65, '#e4d8c0');
+    gr.addColorStop(1, '#b09070');
+  } else {
+    gr.addColorStop(0, '#5a4880');
+    gr.addColorStop(0.65, '#281e40');
+    gr.addColorStop(1, '#0e0a1c');
+  }
+  ctx.fillStyle = gr;
+  ctx.fill();
+
+  // Aro dorado/morado
+  ctx.strokeStyle = isWhite ? 'rgba(201,169,97,0.95)' : 'rgba(160,120,255,0.85)';
+  ctx.lineWidth   = _cellSize * 0.04;
+  ctx.stroke();
+
+  // Símbolo de caballo
+  ctx.shadowBlur = 0;
+  ctx.font = `${_cellSize * 0.42}px serif`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = isWhite ? '#3a2510' : '#c9a961';
+  ctx.fillText('♞', x, y + _cellSize * 0.02);
+  ctx.restore();
+}
+
+// ── Pieza jugador (sprite o fallback) ────────────────
+function drawPlayer(x, y, glowing) {
+  const ctx = _ctx;
+  const s = _cellSize * 0.84;
+  ctx.save();
+  ctx.shadowColor = 'rgba(120,80,255,0.8)';
+  ctx.shadowBlur  = glowing ? 30 : 18;
+  if (_sprites.jugador) {
+    ctx.drawImage(_sprites.jugador, x - s / 2, y - s / 2, s, s);
+  } else {
+    drawKnight(x, y, false, glowing);
+  }
+  ctx.restore();
+}
+
+// ── Lerp animado ────────────────────────────────────
+function lerpPos(anim) {
+  const now = performance.now();
+  const t   = Math.min(1, (now - anim.start) / anim.dur);
+  const e   = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  return {
+    x: (_bx + anim.fromC * _cellSize + _cellSize / 2) + (anim.toC - anim.fromC) * _cellSize * e,
+    y: (_by + anim.fromR * _cellSize + _cellSize / 2) + (anim.toR - anim.fromR) * _cellSize * e,
+    done: t >= 1,
+  };
+}
+
+// ── Dibujar piezas ───────────────────────────────────
+function drawPieces(state) {
+  if (!state) return;
+  const [wr, wc] = state.white_pos || [0, 0];
+  const [br, bc] = state.black_pos || [7, 7];
+
+  // Caballo blanco (IA)
+  if (_wAnim) {
+    const lp = lerpPos(_wAnim);
+    drawKnight(lp.x, lp.y, true, true);
+    if (lp.done) _wAnim = null;
+  } else {
+    const { x, y } = cellCenter(wr, wc);
+    drawKnight(x, y, true, false);
+  }
+
+  // Caballo negro (Jugador)
+  if (_bAnim) {
+    const lp = lerpPos(_bAnim);
+    drawPlayer(lp.x, lp.y, true);
+    if (lp.done) _bAnim = null;
+  } else {
+    const { x, y } = cellCenter(br, bc);
+    drawPlayer(x, y, false);
+  }
+}
+
+// ── Partículas 2D ────────────────────────────────────
+function spawnParticles2D(row, col, color, n = 16) {
+  const { x, y } = cellCenter(row, col);
+  for (let i = 0; i < n; i++) {
+    const ang   = (i / n) * Math.PI * 2 + Math.random() * 0.4;
+    const spd   = 3 + Math.random() * 4;
+    _particles.push({
+      x, y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd - 5,
+      r:  2.5 + Math.random() * 3,
+      color,
+      life: 1.0,
+    });
+  }
+}
+
+function drawParticles() {
+  const ctx  = _ctx;
+  _particles = _particles.filter(p => p.life > 0);
+  for (const p of _particles) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle   = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur  = 8;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    p.x  += p.vx;
+    p.y  += p.vy;
+    p.vy += 0.35;
+    p.life -= 0.03;
+  }
+}
+
+// ── Loop de render ───────────────────────────────────
+function renderLoop(state) {
+  if (!_canvas) return;
+  const ctx = _ctx;
+  ctx.fillStyle = BG_COL;
+  ctx.fillRect(0, 0, _canvas.width, _canvas.height);
+
+  _float += 0.025;
+  drawBoard();
+  drawHighlights();
+  drawCollectibles(state);
+  drawPieces(state);
+  drawParticles();
+
+  requestAnimationFrame(() => renderLoop(window.__gameState));
+}
+
+// ── Detectar recogida entre estados ──────────────────
+function detectPickup(prev, next) {
+  if (!prev) return null;
+  for (const k of Object.keys(prev.stars || {})) {
+    if (!(next.stars || {})[k]) {
+      const [row, col] = k.split(',').map(Number);
+      return { type: 'star',   row, col, value: prev.stars[k] };
+    }
+  }
+  for (const k of Object.keys(prev.energy_tiles || {})) {
+    if (!(next.energy_tiles || {})[k]) {
+      const [row, col] = k.split(',').map(Number);
+      return { type: 'potion', row, col, value: prev.energy_tiles[k] };
+    }
+  }
+  return null;
+}
+
+function flashBar(id, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), 900);
+}
+
+function animatePickup(pickup, player) {
+  if (!pickup) return;
+  if (pickup.type === 'star') {
+    spawnParticles2D(pickup.row, pickup.col, '#ffd43b', 18);
+    flashBar(player === 'white' ? 'white-points-bar' : 'black-points-bar', 'bar-flash--gold');
+    window.mostrarToast?.(`★ Snitch +${pickup.value} pts → ${player === 'white' ? 'IA' : 'Tú'}`, 2500);
+  } else {
+    spawnParticles2D(pickup.row, pickup.col, '#22d3ee', 14);
+    flashBar(player === 'white' ? 'white-energy-bar' : 'black-energy-bar', 'bar-flash--cyan');
+    window.mostrarToast?.(`⚡ Poción +${pickup.value} energía → ${player === 'white' ? 'IA' : 'Tú'}`, 2500);
+  }
+}
+
+// ── Animación de salto ───────────────────────────────
+function startAnim(piece, fromR, fromC, toR, toC) {
+  _animating = true;
+  const anim = { fromR, fromC, toR, toC, start: performance.now(), dur: ANIM_DUR };
+  if (piece === 'white') _wAnim = anim;
+  else                   _bAnim = anim;
+  return new Promise(res => setTimeout(() => { _animating = false; res(); }, ANIM_DUR + 40));
+}
+
+// ── Aplicar estado ───────────────────────────────────
+async function applyState(state, animW = false, animB = false, prevState = null) {
+  const pickup   = detectPickup(prevState, state);
+  const moverFue = prevState ? prevState.current_turn : null;
+  const prev     = window.__gameState;
+
+  if (animW && prev) await startAnim('white', prev.white_pos[0], prev.white_pos[1], state.white_pos[0], state.white_pos[1]);
+  if (animB && prev) await startAnim('black', prev.black_pos[0], prev.black_pos[1], state.black_pos[0], state.black_pos[1]);
+
+  if (pickup && moverFue) animatePickup(pickup, moverFue);
+
+  window.__gameState = state;
+  _validMoves = (state.current_turn === 'black' && !state.game_over)
+    ? (state.valid_moves || [])
+    : [];
+
+  window.onEstadoActualizado?.(state);
+}
+
+// ── Turno de la IA ───────────────────────────────────
+async function runAITurn() {
+  if (_busy || window.__gameState?.game_over) return;
+  if (window.__gameState?.current_turn !== 'white') return;
+  _busy = true;
+  _validMoves = [];
+
+  const prevState = JSON.parse(JSON.stringify(window.__gameState));
+  try {
+    const profs = { principiante: 2, amateur: 4, experto: 6 };
+    const prof  = profs[prevState.nivel] || 2;
+    const resp  = await obtenerMovimientoIA(prevState, prof);
+
+    if (resp?.movimiento?.length === 2) {
+      const [r, c] = resp.movimiento;
+      await startAnim('white', prevState.white_pos[0], prevState.white_pos[1], r, c);
+
+      const next = JSON.parse(JSON.stringify(prevState));
+      next.white_pos     = [r, c];
+      next.current_turn  = 'black';
+      const dKey = `${r},${c}`;
+      if (prevState.stars?.[dKey] !== undefined) {
+        next.white_points = (next.white_points || 0) + prevState.stars[dKey];
+        delete next.stars[dKey];
+        next.message = `IA recoge snitch: +${prevState.stars[dKey]} pts`;
+      } else if (prevState.energy_tiles?.[dKey] !== undefined) {
+        next.white_energy = (next.white_energy || 0) + prevState.energy_tiles[dKey];
+        delete next.energy_tiles[dKey];
+        next.message = `IA recoge poción: +${prevState.energy_tiles[dKey]} energía`;
+      } else {
+        next.message = `IA movió a [${r}, ${c}]`;
+      }
+      next.white_energy = Math.max(0, (next.white_energy || 0) - 1);
+      const deltas = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+      next.valid_moves = deltas.map(([dr,dc]) => [next.black_pos[0]+dr, next.black_pos[1]+dc])
+                               .filter(([nr,nc]) => nr>=0&&nr<8&&nc>=0&&nc<8);
+      await applyState(next, false, false, prevState);
+    } else {
+      const next = { ...prevState, current_turn: 'black', message: 'IA pasó su turno' };
+      await applyState(next, false, false, prevState);
+    }
+  } catch (e) { console.error(e); }
+  finally { _busy = false; }
+}
+
+// ── Click del jugador ────────────────────────────────
+async function onPlayerClick(row, col) {
+  if (_busy || _animating || window.__gameState?.game_over) return;
+  if (window.__gameState?.current_turn !== 'black') return;
+
+  const valid = (_validMoves).some(([r, c]) => r === row && c === col);
+  if (!valid) { window.mostrarToast?.('Movimiento inválido'); return; }
+
+  _busy = true;
+  _validMoves = [];
+  const prevState = JSON.parse(JSON.stringify(window.__gameState));
+
+  await startAnim('black', prevState.black_pos[0], prevState.black_pos[1], row, col);
+
+  const next  = JSON.parse(JSON.stringify(prevState));
+  next.black_pos     = [row, col];
+  next.current_turn  = 'white';
+  next.valid_moves   = [];
+  const dKey = `${row},${col}`;
+  if (prevState.stars?.[dKey] !== undefined) {
+    next.black_points = (next.black_points || 0) + prevState.stars[dKey];
+    delete next.stars[dKey];
+    next.message = `Recogiste snitch: +${prevState.stars[dKey]} pts`;
+  } else if (prevState.energy_tiles?.[dKey] !== undefined) {
+    next.black_energy = (next.black_energy || 0) + prevState.energy_tiles[dKey];
+    delete next.energy_tiles[dKey];
+    next.message = `Recogiste poción: +${prevState.energy_tiles[dKey]} energía`;
+  } else {
+    next.message = `Moviste a [${row}, ${col}]`;
+  }
+  next.black_energy = Math.max(0, (next.black_energy || 0) - 1);
+
+  await applyState(next, false, false, prevState);
+  _busy = false;
+  setTimeout(runAITurn, 500);
+}
+
+// ── Construir tablero ─────────────────────────────────
 async function buildBoard(estado) {
   const container = document.getElementById('map-canvas');
   container.innerHTML = '';
 
-  let tex;
-  try {
-    tex = await loadAssets();
-  } catch (e) {
-    console.error('Error cargando texturas:', e);
-    window.mostrarToast?.('Error al cargar texturas del escenario');
-    tex = await loadAssets().catch(() => null);
+  _canvas = document.createElement('canvas');
+  _canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;cursor:pointer;';
+  container.appendChild(_canvas);
+  _ctx = _canvas.getContext('2d');
+
+  function resize() {
+    _canvas.width  = container.clientWidth  || window.innerWidth;
+    _canvas.height = container.clientHeight || window.innerHeight;
+    computeLayout();
   }
+  resize();
+  window.addEventListener('resize', resize);
 
-  const W = container.clientWidth;
-  const H = container.clientHeight;
+  _sprites = await loadSprites();
 
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1d33);
-
-  const aspect = W / H;
-  const frust = FRUST_SIZE;
-  const camera = new THREE.OrthographicCamera(
-    -frust * aspect / 2, frust * aspect / 2, frust / 2, -frust / 2, 0.1, 400
-  );
-
-  function computeFitZoom(viewAspect) {
-    const boardRadius = GRID * TILE / 2 + 0.6;
-    const padding = 1.62;
-    const zoomV = FRUST_SIZE / (boardRadius * padding);
-    const zoomH = (FRUST_SIZE * viewAspect) / (boardRadius * padding);
-    return Math.min(zoomV, zoomH) * 0.82;
-  }
-
-  function applyFixedCamera() {
-    camera.position.copy(CAM_POSITION);
-    camera.lookAt(CAM_TARGET);
-    camera.updateProjectionMatrix();
-  }
-
-  function setZoom(value) {
-    camera.zoom = THREE.MathUtils.clamp(value, MIN_ZOOM, MAX_ZOOM);
-    camera.updateProjectionMatrix();
-  }
-
-  setZoom(computeFitZoom(aspect));
-  applyFixedCamera();
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(W, H);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  container.appendChild(renderer.domElement);
-
-  let initialZoom = computeFitZoom(aspect);
-
-  renderer.domElement.addEventListener('wheel', (event) => {
-    event.preventDefault();
-    const factor = event.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
-    setZoom(camera.zoom * factor);
-  }, { passive: false });
-
-  scene.add(new THREE.AmbientLight(0xffffff, 1.35));
-  scene.add(new THREE.HemisphereLight(0xfff8ee, 0x334466, 0.45));
-
-  const sun = new THREE.DirectionalLight(0xfff8e7, 1.9);
-  sun.position.set(18, 32, 14);
-  scene.add(sun);
-
-  const fill = new THREE.DirectionalLight(0xaad4ff, 0.85);
-  fill.position.set(-12, 16, 18);
-  scene.add(fill);
-
-  const rim = new THREE.DirectionalLight(0xffeedd, 0.45);
-  rim.position.set(8, 8, -16);
-  scene.add(rim);
-
-  const boardBase = mm(
-    new THREE.BoxGeometry(GRID * TILE + 0.08, 0.06, GRID * TILE + 0.08),
-    0x2a2520
-  );
-  boardBase.position.set(0, -0.03, 0);
-  scene.add(boardBase);
-
-  const ground = mm(new THREE.PlaneGeometry(GRID * TILE + 8, GRID * TILE + 8), 0x141824);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.set(0, -0.06, 0);
-  scene.add(ground);
-
-  const boardGroup = new THREE.Group();
-  boardGroup.position.set(-OFFSET, 0, -OFFSET);
-  scene.add(boardGroup);
-
-  const highlights = new THREE.Group();
-  highlights.name = 'highlights';
-  boardGroup.add(highlights);
-
-  for (let row = 0; row < GRID; row++) {
-    for (let col = 0; col < GRID; col++) {
-      const isLight = (row + col) % 2 === 0;
-      const tile = tex
-        ? createTexturedTile(row, col, isLight, tex)
-        : (() => {
-            const fallback = mm(
-              new THREE.BoxGeometry(TILE, TILE_HEIGHT, TILE),
-              isLight ? 0xf0d9b5 : 0xb58863
-            );
-            const { x, z } = boardToWorld(row, col);
-            fallback.position.set(x, TILE_HEIGHT / 2, z);
-            fallback.userData = { row, col, type: 'tile' };
-            return fallback;
-          })();
-      boardGroup.add(tile);
-    }
-  }
-
-  const specials = new THREE.Group();
-  specials.name = 'specials';
-  boardGroup.add(specials);
-
-  function syncSpecials(state) {
-    while (specials.children.length) specials.remove(specials.children[0]);
-    if (!tex) return;
-    Object.entries(state.stars || {}).forEach(([key, value]) => {
-      const [row, col] = key.split(',').map(Number);
-      const snitch = createSnitchMesh(value, tex);
-      const { x, z } = boardToWorld(row, col);
-      snitch.position.set(x, PIECE_Y, z);
-      specials.add(snitch);
-    });
-    Object.entries(state.energy_tiles || {}).forEach(([key, value]) => {
-      const [row, col] = key.split(',').map(Number);
-      const potion = createPotionMesh(value, tex);
-      const { x, z } = boardToWorld(row, col);
-      potion.position.set(x, PIECE_Y, z);
-      specials.add(potion);
-    });
-  }
-
-  const whiteKnight = createKnightMesh(0xf8f8f2);
-  whiteKnight.userData.player = 'white';
-  const blackKnight = tex ? createPlayerPiece(tex) : createKnightMesh(0x2a2a2a);
-  blackKnight.userData.player = 'black';
-  boardGroup.add(whiteKnight, blackKnight);
-
-  function placeKnights(state) {
-    const w = boardToWorld(state.white_pos[0], state.white_pos[1]);
-    const b = boardToWorld(state.black_pos[0], state.black_pos[1]);
-    whiteKnight.position.set(w.x, PIECE_Y, w.z);
-    blackKnight.position.set(b.x, PIECE_Y, b.z);
-  }
-
-  function showValidMoves(moves) {
-    while (highlights.children.length) highlights.remove(highlights.children[0]);
-    moves.forEach(([row, col]) => {
-      const { x, z } = boardToWorld(row, col);
-
-      const disc = mm(new THREE.CircleGeometry(TILE * 0.28, 24), HIGHLIGHT, {
-        transparent: true,
-        opacity: 0.28,
-        depthWrite: false,
-      });
-      disc.rotation.x = -Math.PI / 2;
-      disc.position.set(x, TILE_HEIGHT + 0.01, z);
-      disc.userData = { row, col, type: 'highlight' };
-      highlights.add(disc);
-
-      const ring = em(new THREE.RingGeometry(TILE * 0.24, TILE * 0.30, 24), VALID_RING, 0.55);
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(x, TILE_HEIGHT + 0.015, z);
-      ring.userData = { row, col, type: 'highlight' };
-      highlights.add(ring);
-    });
-  }
-
-  let animating = false;
-  let busy = false;
-  let floatPhase = 0;
-
-  async function animateKnight(knight, toRow, toCol) {
-    animating = true;
-    const start = { x: knight.position.x, z: knight.position.z };
-    const end = boardToWorld(toRow, toCol);
-    let t = 0;
-    const jumpH = 0.55;
-    await new Promise((resolve) => {
-      function step() {
-        t += 0.045;
-        if (t >= 1) {
-          knight.position.set(end.x, PIECE_Y, end.z);
-          animating = false;
-          resolve();
-          return;
-        }
-        const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-        knight.position.x = start.x + (end.x - start.x) * ease;
-        knight.position.z = start.z + (end.z - start.z) * ease;
-        knight.position.y = PIECE_Y + Math.sin(Math.PI * ease) * jumpH;
-        facePiece(knight, end.x - start.x, end.z - start.z);
-        requestAnimationFrame(step);
-      }
-      step();
-    });
-  }
-
-  async function applyState(state, animateWhite = false, animateBlack = false) {
-    window.__gameState = state;
-    syncSpecials(state);
-    placeKnights(state);
-
-    if (animateWhite) await animateKnight(whiteKnight, state.white_pos[0], state.white_pos[1]);
-    if (animateBlack) await animateKnight(blackKnight, state.black_pos[0], state.black_pos[1]);
-
-    if (state.current_turn === 'black' && !state.game_over) {
-      showValidMoves(state.valid_moves || []);
-    } else {
-      showValidMoves([]);
-    }
-
-    window.onEstadoActualizado?.(state);
-  }
-
-  async function runAITurn() {
-    if (busy || window.__gameState?.game_over) return;
-    if (window.__gameState?.current_turn !== 'white') return;
-    busy = true;
-    showValidMoves([]);
-    try {
-      const profundidades = { principiante: 2, amateur: 4, experto: 6 };
-      const nivel = window.__gameState.nivel || 'principiante';
-      const prof = profundidades[nivel] || 2;
-      
-      const response = await obtenerMovimientoIA(window.__gameState, prof);
-      if (response && response.movimiento && response.movimiento.length === 2) {
-        const [r, c] = response.movimiento;
-        await animateKnight(whiteKnight, r, c);
-        window.__gameState.white_pos = [r, c];
-        window.__gameState.current_turn = 'black';
-        window.__gameState.message = 'La IA movió a ' + r + ', ' + c;
-        
-        // Calcular saltos iniciales válidos de demo para la UI
-        const br = window.__gameState.black_pos[0];
-        const bc = window.__gameState.black_pos[1];
-        const deltas = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
-        window.__gameState.valid_moves = deltas
-          .map(([dr, dc]) => [br+dr, bc+dc])
-          .filter(([nr, nc]) => nr>=0 && nr<8 && nc>=0 && nc<8);
-        
-        await applyState(window.__gameState, false, false);
-      } else {
-        window.__gameState.current_turn = 'black';
-        window.__gameState.message = 'La IA pasó su turno';
-        await applyState(window.__gameState, false, false);
-      }
-    } catch (e) {
-      console.error('Error calculando turno de IA:', e);
-    } finally {
-      busy = false;
-    }
-  }
-
-  async function onPlayerClick(row, col) {
-    if (busy || animating || window.__gameState?.game_over) return;
-    if (window.__gameState?.current_turn !== 'black') return;
-
-    const valid = (window.__gameState.valid_moves || []).some(
-      ([r, c]) => r === row && c === col
-    );
-    if (!valid) {
-      window.mostrarToast?.('Movimiento inválido para el caballo');
-      return;
-    }
-
-    busy = true;
-    showValidMoves([]);
-    
-    // Aplicamos movimiento del jugador
-    await animateKnight(blackKnight, row, col);
-    window.__gameState.black_pos = [row, col];
-    window.__gameState.current_turn = 'white';
-    window.__gameState.message = 'Moviste a ' + row + ', ' + col;
-    window.__gameState.valid_moves = [];
-    await applyState(window.__gameState, false, false);
-    
-    setTimeout(runAITurn, 600);
-    busy = false;
-  }
-
-  const raycaster = new THREE.Raycaster();
-  const pointer = new THREE.Vector2();
-
-  renderer.domElement.addEventListener('click', (event) => {
-    const rect = renderer.domElement.getBoundingClientRect();
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    raycaster.setFromCamera(pointer, camera);
-
-    const hits = raycaster.intersectObjects([boardGroup, highlights], true);
-    for (const hit of hits) {
-      let obj = hit.object;
-      while (obj) {
-        if (obj.userData?.type === 'highlight' || obj.userData?.type === 'tile') {
-          onPlayerClick(obj.userData.row, obj.userData.col);
-          return;
-        }
-        obj = obj.parent;
-      }
-    }
+  // Click (solo interacción del juego, sin zoom)
+  _canvas.addEventListener('click', e => {
+    const rect = _canvas.getBoundingClientRect();
+    const scaleX = _canvas.width  / rect.width;
+    const scaleY = _canvas.height / rect.height;
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top)  * scaleY;
+    const cell = hitCell(px, py);
+    if (cell) onPlayerClick(cell[0], cell[1]);
   });
 
-  document.getElementById('btn-zoom-in').onclick = () => setZoom(camera.zoom * ZOOM_STEP);
-  document.getElementById('btn-zoom-out').onclick = () => setZoom(camera.zoom / ZOOM_STEP);
-  document.getElementById('btn-reset-cam').onclick = () => {
-    setZoom(initialZoom);
-    applyFixedCamera();
-  };
+  window.__sceneData = { applyState, runAITurn };
 
-  window.setMapTheme = (lightOn) => {
-    scene.background.setHex(lightOn ? 0xd8e4f8 : 0x1a1d33);
-    ground.material.color.setHex(lightOn ? 0xc8d0e0 : 0x141824);
-  };
-
-  window.addEventListener('resize', () => {
-    const nW = container.clientWidth;
-    const nH = container.clientHeight;
-    const nA = nW / nH;
-    camera.left = -frust * nA / 2;
-    camera.right = frust * nA / 2;
-    camera.updateProjectionMatrix();
-    initialZoom = computeFitZoom(nA);
-    renderer.setSize(nW, nH);
-  });
-
-  window.__sceneData = { applyState, runAITurn, scene, renderer };
-
-  (function loop() {
-    if (!renderer.domElement.isConnected) return;
-    requestAnimationFrame(loop);
-    floatPhase += 0.03;
-    specials.children.forEach((item, i) => {
-      item.position.y = PIECE_Y + Math.sin(floatPhase + i * 1.1) * 0.03;
-    });
-    renderer.render(scene, camera);
-  })();
-
+  // Iniciar loop
+  renderLoop(window.__gameState);
   return { applyState, runAITurn };
 }
 
+// ── Eventos externos ──────────────────────────────────
 window.addEventListener('partida-lista', async (e) => {
-  const { applyState, runAITurn } = await buildBoard(e.detail);
-  await applyState(e.detail);
+  const { applyState: aS, runAITurn: rAI } = await buildBoard(e.detail);
+  await aS(e.detail);
   if (e.detail.current_turn === 'white' && !e.detail.game_over) {
-    setTimeout(runAITurn, 800);
+    setTimeout(rAI, 800);
   }
 });
 
 window.addEventListener('partida-reiniciada', async (e) => {
-  if (window.__sceneData.applyState) {
-    await window.__sceneData.applyState(e.detail);
-    if (e.detail.current_turn === 'white') {
-      setTimeout(() => window.__sceneData.runAITurn?.(), 800);
-    }
+  const sd = window.__sceneData;
+  if (sd?.applyState) {
+    _validMoves = [];
+    _particles  = [];
+    _wAnim = null; _bAnim = null;
+    await sd.applyState(e.detail);
+    if (e.detail.current_turn === 'white') setTimeout(() => sd.runAITurn?.(), 800);
   } else {
     await buildBoard(e.detail);
   }

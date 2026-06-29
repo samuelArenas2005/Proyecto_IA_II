@@ -2,13 +2,13 @@
 Lógica del algoritmo Minimax, poda alfa-beta y heurísticas (a implementar).
 """
 
-def minimax_alpha_beta(estado, depth, alpha, beta, maximizing_player):
+def minimax_alpha_beta():
     """
     Implementación de Minimax con poda alfa-beta.
     """
     pass
 
-def heuristic(estado):
+def puntuacion_heuristica(estado):
     """
     Heurística para evaluar el estado del juego.
     """

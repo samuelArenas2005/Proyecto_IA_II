@@ -1,253 +1,374 @@
 /* ══════════════════════════════════════════════════════════════
-   menu.css — Estilos de la pantalla de inicio (menu.html)
-   Temática Harry Potter / Medieval
+   menu.css — Knight Energy · Menú Principal
+   Diseño medieval fiel a la referencia visual
 ══════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:      #0e0c0a;
-  --surface: rgba(22, 18, 14, 0.92);
-  --border:  rgba(139, 115, 85, 0.45);
-  --accent:  #c9a961;
-  --accent-dim: #8b7355;
-  --cyan:    #a89060;
-  --green:   #6b8f5e;
-  --text:    #e8dcc8;
-  --muted:   #9a8872;
-  --radius:  4px;
-  --panel-bg: linear-gradient(165deg, rgba(32, 26, 20, 0.96) 0%, rgba(18, 14, 10, 0.98) 100%);
+  /* Paleta de colores del diseño */
+  --gold:          #c9a84c;
+  --gold-light:    #e8d48b;
+  --gold-dark:     #8b6914;
+  --gold-border:   #a68932;
+  --btn-bg:        linear-gradient(180deg, #2a3a4a 0%, #1a2a38 40%, #162430 100%);
+  --btn-border-outer: #5a4a2a;
+  --btn-border-inner: #3a5a3a;
+  --text-light:    #f0e6d0;
+  --text-glow:     rgba(255, 248, 230, 0.9);
+  --footer-color:  rgba(200, 190, 170, 0.6);
 }
 
 html, body {
   width: 100%; height: 100%; overflow: hidden;
-  font-family: 'Source Sans 3', sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  font-family: 'Cinzel', serif;
+  background: #0a0a0a;
+  color: var(--text-light);
 }
 
-/* ── Fondo Canvas 2D top-down ── */
-#bg-canvas {
+/* ── Fondo de imagen ── */
+#bg-image {
   position: fixed; inset: 0;
-  width: 100vw; height: 100vh; z-index: 0;
-  overflow: hidden;
-}
-#bg-canvas canvas {
-  display: block;
-  width: 100vw !important;
-  height: 100vh !important;
+  width: 100vw; height: 100vh;
+  z-index: 0;
+  background: url('assets/NewSprints/background.png') center center / cover no-repeat;
 }
 
 #overlay {
   position: fixed; inset: 0;
   width: 100vw; height: 100vh;
-  background: radial-gradient(ellipse at center,
-    rgba(14,12,10,0.35) 0%,
-    rgba(14,12,10,0.82) 100%);
+  background: radial-gradient(ellipse at center top,
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0.35) 60%,
+    rgba(0, 0, 0, 0.55) 100%);
   z-index: 1;
   pointer-events: none;
 }
 
-/* ── Layout principal ── */
-#menu-root {
-  position: relative; z-index: 2;
-  width: 100%; height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ── Partículas decorativas ── */
+#particles {
+  position: fixed; inset: 0;
+  z-index: 2; pointer-events: none;
 }
 
+.particle {
+  position: absolute;
+  width: 3px; height: 3px;
+  background: radial-gradient(circle, rgba(255, 215, 100, 0.8) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: floatParticle linear infinite;
+  opacity: 0;
+}
+
+@keyframes floatParticle {
+  0%   { opacity: 0; transform: translateY(0) translateX(0); }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-100vh) translateX(30px); }
+}
+
+/* ── Layout principal ── */
+#menu-root {
+  position: relative; z-index: 3;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* ── Panel del menú ── */
 .menu-panel {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0;
-  background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 40px 44px 36px;
-  min-width: 340px;
-  max-width: 420px;
+  max-width: 580px;
   width: 100%;
-  box-shadow: inset 0 1px 0 rgba(201, 169, 97, 0.08), 0 8px 32px rgba(0, 0, 0, 0.6);
-  animation: panelIn 0.65s cubic-bezier(0.22,1,0.36,1) both;
+  animation: panelIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes panelIn {
-  from { opacity: 0; transform: translateY(28px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.brand-tag {
-  display: inline-block;
-  background: rgba(139, 115, 85, 0.15);
-  color: var(--accent);
-  font-family: 'Cinzel', serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 3px;
-  border: 1px solid rgba(139, 115, 85, 0.3);
-  margin-bottom: 15px;
-  align-self: flex-start;
-}
-
+/* ── Título "KNIGHT ENERGY" ── */
 .brand-title {
-  font-family: 'Cinzel', serif;
-  font-size: 3rem;
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 900;
+  color: #f5ecd7; /* Cálido resplandor */
+  text-align: center;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-shadow:
+    0 0 10px rgba(255, 220, 120, 0.35),
+    0 0 25px rgba(218, 185, 90, 0.2),
+    0 0 50px rgba(201, 168, 76, 0.1),
+    0 2px 6px rgba(0, 0, 0, 0.9),
+    0 4px 12px rgba(0, 0, 0, 0.6);
+  margin-bottom: 4px;
+  user-select: none;
+}
+
+.brand-subtitle {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
   font-weight: 700;
-  line-height: 1.05;
-  color: var(--accent);
-  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  color: #f0e4c8;
+  text-align: center;
+  letter-spacing: 0.12em;
+  text-shadow:
+    0 0 8px rgba(255, 220, 120, 0.3),
+    0 0 20px rgba(218, 185, 90, 0.15),
+    0 2px 5px rgba(0, 0, 0, 0.9),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+  margin-bottom: 2px;
+  user-select: none;
 }
 
-.brand-sub {
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin-top: 8px;
-}
-
-.menu-sep {
-  width: 100%; height: 1px;
-  background: var(--border);
-  margin: 24px 0;
+/* ── Snitch Dorada ── */
+.snitch-container {
   position: relative;
-}
-.menu-sep::after {
-  content: "♦";
-  position: absolute;
-  left: 50%;
-  top: -8px;
-  transform: translateX(-50%);
-  color: var(--accent-dim);
-  font-size: 0.8rem;
-  background: var(--bg);
-  padding: 0 8px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 16px;
+  z-index: 5;
 }
 
-/* ── Botones Medievales ── */
-.menu-buttons { display: flex; flex-direction: column; gap: 12px; }
+.snitch-img {
+  width: clamp(60px, 10vw, 100px);
+  height: auto;
+  filter: drop-shadow(0 0 12px rgba(255, 215, 100, 0.6))
+          drop-shadow(0 0 30px rgba(255, 200, 50, 0.3));
+  animation: snitchFloat 3s ease-in-out infinite;
+  cursor: default;
+}
+
+@keyframes snitchFloat {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-8px) rotate(2deg); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOTÓN GENÉRICO MEDIEVAL — Componente reutilizable
+══════════════════════════════════════════════════════════ */
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 480px;
+}
 
 .menu-btn {
+  /* Layout */
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 13px;
+  justify-content: center;
+  gap: 14px;
   width: 100%;
-  padding: 12px 18px;
-  background: rgba(60, 50, 40, 0.5);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  padding: 14px 24px;
+  min-height: 56px;
+
+  /* Fondo con imagen custom del botón */
+  background: url('assets/NewSprints/button.png') center center / 100% 100% no-repeat;
+  border: none;
+  outline: none;
+  border-radius: 0;
+
+  /* Tipografía medieval */
   font-family: 'Cinzel', serif;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--text);
+  font-size: clamp(0.95rem, 2vw, 1.25rem);
+  font-weight: 700;
+  color: var(--gold-light);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+
+  /* Interacción */
   cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  text-align: left;
-}
-
-.menu-btn:hover {
-  background: rgba(139, 115, 85, 0.25);
-  border-color: var(--accent);
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-}
-
-.menu-btn:active {
-  transform: scale(0.98);
-}
-
-.menu-btn--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.menu-btn--disabled:hover {
-  background: rgba(60, 50, 40, 0.5);
-  border-color: var(--border);
-  transform: none;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  text-decoration: none;
+  -webkit-user-select: none;
+  user-select: none;
   box-shadow: none;
-  color: var(--text);
 }
 
-.menu-btn__icon {
-  font-size: 1.1rem;
-  color: var(--accent);
-  width: 24px;
+/* Hover — usa la imagen hover custom */
+.menu-btn:hover {
+  background-image: url('assets/NewSprints/Button_hover.png');
+  color: #fff;
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.08) drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+  text-shadow: 0 0 8px rgba(255, 248, 230, 0.5), 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* Active */
+.menu-btn:active {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+}
+
+/* Focus visible */
+.menu-btn:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 4px;
+}
+
+/* ── Icono del botón (imagen a la derecha) ── */
+.menu-btn__icon-img {
+  width: clamp(32px, 5vw, 48px);
+  height: clamp(32px, 5vw, 48px);
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.menu-btn:hover .menu-btn__icon-img {
+  transform: scale(1.1) rotate(3deg);
+}
+
+/* ── Label del botón ── */
+.menu-btn__label {
+  flex: 1;
   text-align: center;
 }
 
-.menu-btn__label { flex: 1; }
-
-.menu-btn__badge {
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 0.65rem; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 3px;
-  background: rgba(139, 115, 85, 0.2);
-  color: var(--accent);
-  border: 1px solid rgba(139, 115, 85, 0.4);
+/* ── Variante: Botón Exit ── */
+.menu-btn--exit:hover {
+  filter: brightness(1.05) hue-rotate(-15deg) drop-shadow(0 4px 10px rgba(0,0,0,0.5));
 }
 
-/* ── Session Card ── */
-.session-card {
+/* ── Variante: Botón Regresar (más compacto) ── */
+.menu-btn--back {
+  max-width: 280px;
+  margin: 8px auto 0;
+  padding: 10px 20px;
+  min-height: 44px;
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOTONES DE DIFICULTAD Y WRAPPER
+══════════════════════════════════════════════════════════ */
+.difficulty-btn-wrapper {
+  position: relative;
+  width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-around;
+  justify-content: center;
+}
+
+.menu-btn--difficulty {
+  position: relative;
+  overflow: visible;
+  padding: 12px 60px; /* Padding extra para no tapar el texto con las imágenes */
+  min-height: 60px;
+  z-index: 1;
+}
+
+/* Imágenes laterales (árbol izquierda, warrior derecha) */
+.diff-side {
+  position: absolute;
+  width: clamp(26px, 5.5vw, 44px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  transition: transform 0.3s ease;
+  z-index: 5;
+  pointer-events: none; /* Para que el hover y click pasen al botón inferior */
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.diff-side--left {
+  left: 35px;
+}
+
+.diff-side--right {
+  right: 35px;
+}
+
+.difficulty-btn-wrapper:hover .diff-side--left {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.difficulty-btn-wrapper:hover .diff-side--right {
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* ── Footer ── */
+.menu-footer {
   margin-top: 24px;
-  background: rgba(20, 16, 12, 0.6);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-}
-
-.session-card__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-}
-
-.session-card__divider {
-  width: 1px;
-  height: 30px;
-  background: var(--border);
-  margin: 0 12px;
-}
-
-.session-card__label {
+  text-align: center;
   font-family: 'Cinzel', serif;
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: clamp(0.6rem, 1.2vw, 0.8rem);
+  color: var(--footer-color);
   letter-spacing: 0.05em;
-  color: var(--muted);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  user-select: none;
 }
 
-.session-card__value {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--accent);
+/* ── Sparkle esquina ── */
+.sparkle-corner {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  z-index: 10;
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.6);
+  animation: sparkleGlow 2s ease-in-out infinite alternate;
+  user-select: none;
+  pointer-events: none;
 }
 
-.version-tag {
-  position: fixed; bottom: 16px; right: 20px;
-  z-index: 10; font-size: 0.7rem;
-  color: var(--muted); letter-spacing: 0.05em;
-  font-family: 'Cinzel', serif;
+@keyframes sparkleGlow {
+  0%   { opacity: 0.3; text-shadow: 0 0 6px rgba(255, 255, 255, 0.3); transform: scale(1); }
+  100% { opacity: 1;   text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); transform: scale(1.2); }
 }
 
-.authors-tag {
-  position: fixed; bottom: 40px; right: 20px;
-  z-index: 10; font-size: 0.75rem;
-  color: var(--muted);
-  text-align: right;
-  line-height: 1.5;
-  font-style: italic;
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVO
+══════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .menu-btn {
+    padding: 10px 16px;
+    min-height: 48px;
+    font-size: 0.9rem;
+  }
+
+  .menu-btn--difficulty {
+    padding: 10px 40px;
+  }
+
+  .diff-side {
+    width: 30px;
+  }
+
+  .diff-side--left  { left: -2px; }
+  .diff-side--right { right: -2px; }
+
+  .menu-btn__icon-img {
+    width: 28px; height: 28px;
+  }
+
+  .brand-title {
+    font-size: 1.8rem;
+  }
+
+  .snitch-img {
+    width: 55px;
+  }
+}
+
+@media (max-height: 500px) {
+  .menu-buttons { gap: 8px; }
+  .menu-btn { padding: 8px 16px; min-height: 40px; }
+  .snitch-container { margin: 2px 0 8px; }
+  .menu-footer { margin-top: 12px; }
 }

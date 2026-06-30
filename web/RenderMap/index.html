@@ -4,114 +4,122 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Knight Energy – Tablero</title>
-  <meta name="description" content="Tablero 2D 8×8 de Knight Energy." />
+  <meta name="description" content="Tablero 8×8 de Knight Energy con IA Minimax." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- ── Top-bar ──────────────────────────────────── -->
-  <header class="top-bar">
-    <div class="top-bar__left">
-      <button id="btn-back" class="btn-back" title="Volver al menú" onclick="irAlMenu()">
-        &laquo;
-      </button>
-      <span class="logo-text">Knight <em>Energy</em></span>
-      <div class="header-divider"></div>
-      <div class="header-titles">
-        <span class="nav-algo-title" id="nav-nivel-title">Principiante</span>
-        <span class="nav-map-title" id="nav-turn-title">Turno: IA</span>
-      </div>
-    </div>
-    <div class="top-bar__right">
-      <button id="btn-theme" class="btn-theme" title="Cambiar tema" onclick="toggleTheme()">
-        <span id="icon-theme">☼</span>
-      </button>
-    </div>
-  </header>
+  <!-- Fondo -->
+  <div id="bg-image"></div>
+  <div id="overlay"></div>
 
-  <!-- ── Layout principal (tablero | panel info) ── -->
-  <div class="game-layout">
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- MARCADORES SUPERIORES                                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
 
-    <!-- Sección tablero (izquierda) -->
-    <section class="board-section">
-      <div id="map-canvas"></div>
-    </section>
-
-    <!-- Panel de información (derecha) -->
-    <aside class="info-panel">
-
-      <!-- ── Jugadores VS ───────────────────────── -->
-      <div class="duel-block">
-
-        <div class="duel-player">
-          <div class="duel-player__name duel-player__name--white">IA (Blanco)</div>
-          <div class="duel-stat-row">
-            <span class="duel-icon">★</span>
-            <div class="hp-bar-track hp-bar-track--points">
-              <div class="hp-bar-fill hp-bar-fill--points" id="white-points-bar"></div>
-            </div>
-            <span class="duel-val" id="white-points">0</span>
+  <!-- PLAYER (izquierda) -->
+  <div class="scoreboard scoreboard--player" id="scoreboard-player">
+    <img src="../assets/NewSprints/marcador_player.png" alt="" class="scoreboard__bg" />
+    <div class="scoreboard__content">
+      <h3 class="scoreboard__title">PLAYER</h3>
+      <div class="scoreboard__body">
+        <img src="../assets/NewSprints/player.png" alt="Player" class="scoreboard__avatar" />
+        <div class="scoreboard__stats">
+          <div class="scoreboard__stat">
+            <span class="scoreboard__stat-label">ENERGY:</span>
+            <img src="../assets/NewSprints/energy_icon.png" alt="" class="scoreboard__stat-icon" />
+            <span class="scoreboard__stat-value" id="white-energy">7</span>
           </div>
-          <div class="duel-stat-row">
-            <span class="duel-icon">⚡</span>
-            <div class="hp-bar-track hp-bar-track--energy">
-              <div class="hp-bar-fill hp-bar-fill--energy" id="white-energy-bar"></div>
-            </div>
-            <span class="duel-val" id="white-energy">7</span>
-          </div>
-        </div>
-
-        <div class="duel-vs">VS</div>
-
-        <div class="duel-player duel-player--right">
-          <div class="duel-player__name duel-player__name--black">Tú (Negro)</div>
-          <div class="duel-stat-row duel-stat-row--rtl">
-            <span class="duel-val" id="black-points">0</span>
-            <div class="hp-bar-track hp-bar-track--points">
-              <div class="hp-bar-fill hp-bar-fill--points" id="black-points-bar"></div>
-            </div>
-            <span class="duel-icon">★</span>
-          </div>
-          <div class="duel-stat-row duel-stat-row--rtl">
-            <span class="duel-val" id="black-energy">7</span>
-            <div class="hp-bar-track hp-bar-track--energy">
-              <div class="hp-bar-fill hp-bar-fill--energy" id="black-energy-bar"></div>
-            </div>
-            <span class="duel-icon">⚡</span>
+          <div class="scoreboard__stat">
+            <span class="scoreboard__stat-label">POINTS:</span>
+            <img src="../assets/NewSprints/snitch_dorada.png" alt="" class="scoreboard__stat-icon scoreboard__stat-icon--snitch" />
+            <span class="scoreboard__stat-value" id="white-points">0</span>
           </div>
         </div>
       </div>
-
-      <!-- ── Separador ──────────────────────────── -->
-      <div class="info-sep"></div>
-
-      <!-- ── Estado de la partida ───────────────── -->
-      <div id="game-status" class="game-status">Cargando partida...</div>
-
-    </aside>
+    </div>
   </div>
 
+  <!-- OPPONENT (derecha) -->
+  <div class="scoreboard scoreboard--enemy" id="scoreboard-enemy">
+    <img src="../assets/NewSprints/marcador_enemy.png" alt="" class="scoreboard__bg" />
+    <div class="scoreboard__content">
+      <h3 class="scoreboard__title">OPPONENT (IA)</h3>
+      <div class="scoreboard__body">
+        <div class="scoreboard__stats scoreboard__stats--right">
+          <div class="scoreboard__stat">
+            <span class="scoreboard__stat-label">ENERGY:</span>
+            <img src="../assets/NewSprints/energy_icon.png" alt="" class="scoreboard__stat-icon" />
+            <span class="scoreboard__stat-value" id="black-energy">7</span>
+          </div>
+          <div class="scoreboard__stat">
+            <span class="scoreboard__stat-label">POINTS:</span>
+            <img src="../assets/NewSprints/snitch_dorada.png" alt="" class="scoreboard__stat-icon scoreboard__stat-icon--snitch" />
+            <span class="scoreboard__stat-value" id="black-points">0</span>
+          </div>
+        </div>
+        <img src="../assets/NewSprints/enemy_player.png" alt="Opponent" class="scoreboard__avatar" />
+      </div>
+      <div class="scoreboard__difficulty" id="difficulty-label">EXPERT (D6)</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- TABLERO CENTRAL                                        -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="board-area" id="board-area">
+    <div class="board-wrapper">
+      <img src="../assets/NewSprints/tablero.png" alt="Tablero" class="board-bg-img" />
+      <div class="board-grid" id="board-grid">
+        <!-- Las 64 celdas se generan dinámicamente en app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- TÍTULO DEL JUEGO                                       -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="game-brand-title">
+    <h1 class="brand-title">KNIGHT<br>ENERGY</h1>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- FOOTER BAR                                             -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <footer class="game-footer" id="game-footer">
+    <div class="footer-turn" id="footer-turn">
+      CURRENT TURN: <strong id="turn-label">PLAYER</strong>
+    </div>
+    <div class="footer-buttons">
+      <button class="footer-btn" id="btn-menu" onclick="irAlMenu()">
+        <span>MENU</span>
+      </button>
+      <button class="footer-btn" id="btn-restart" onclick="nuevaPartida()">
+        <span>RESTART</span>
+      </button>
+    </div>
+  </footer>
 
   <!-- Toast -->
   <div class="toast" id="toast"><span id="toast-msg"></span></div>
 
   <!-- Modal fin del juego -->
-  <div id="game-over-modal" class="report-modal">
-    <div class="report-modal__card medieval-panel">
-      <div class="report-modal__header">
-        <h3 id="game-over-title">Fin del juego</h3>
-        <button id="btn-close-game-over" title="Cerrar">✕</button>
-      </div>
-      <div id="game-over-content" class="report-modal__content"></div>
-      <button class="medieval-btn" onclick="nuevaPartida()">Jugar de nuevo</button>
+  <div id="game-over-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 class="modal-title" id="game-over-title">Fin del juego</h2>
+      <div class="modal-content" id="game-over-content"></div>
+      <button class="footer-btn footer-btn--modal" onclick="nuevaPartida()">
+        <span>JUGAR DE NUEVO</span>
+      </button>
+      <button class="modal-close" id="btn-close-game-over">✕</button>
     </div>
   </div>
 
-  <script src="/eel.js"></script>
+  <script src="/eel.js" onerror="console.warn('eel.js no disponible')"></script>
   <script src="../api.js"></script>
   <script src="app.js"></script>
-  <script src="map.js"></script>
 </body>
 </html>

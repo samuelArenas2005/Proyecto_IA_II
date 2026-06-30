@@ -7,93 +7,124 @@
   <meta name="description" content="Juego de caballos con inteligencia artificial estilo medieval." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;900&family=MedievalSharp&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="menu.css" />
 </head>
 <body>
 
-  <div id="bg-canvas"></div>
+  <!-- Fondo de imagen completa -->
+  <div id="bg-image"></div>
   <div id="overlay"></div>
+
+  <!-- Partículas decorativas -->
+  <div id="particles"></div>
 
   <main id="menu-root">
 
-    <!-- Panel de selección de dificultad -->
-    <div id="nivel-panel" class="menu-panel" style="display: none; opacity: 0;">
-      <div class="brand-tag">Dificultad Mágica</div>
-      <h1 class="brand-title">Elige tu<br>Nivel</h1>
-      <p class="brand-sub">La IA ajustará su profundidad arcana</p>
-
-      <div class="menu-sep"></div>
-
-      <nav class="menu-buttons" aria-label="Selección de dificultad">
-        <button id="btn-principiante" class="menu-btn" onclick="seleccionarNivelYJugar('principiante')" title="Profundidad 2">
-          <span class="menu-btn__icon">I</span>
-          <span class="menu-btn__label">Aprendiz</span>
-          <span class="menu-btn__badge">Prof. 2</span>
-        </button>
-
-        <button id="btn-amateur" class="menu-btn" onclick="seleccionarNivelYJugar('amateur')" title="Profundidad 4">
-          <span class="menu-btn__icon">II</span>
-          <span class="menu-btn__label">Hechicero</span>
-          <span class="menu-btn__badge">Prof. 4</span>
-        </button>
-
-        <button id="btn-experto" class="menu-btn" onclick="seleccionarNivelYJugar('experto')" title="Profundidad 6">
-          <span class="menu-btn__icon">III</span>
-          <span class="menu-btn__label">Mago Supremo</span>
-          <span class="menu-btn__badge">Prof. 6</span>
-        </button>
-
-        <div class="menu-sep"></div>
-
-        <button class="menu-btn" onclick="regresarAlMenu()" title="Volver">
-          <span class="menu-btn__icon">«</span>
-          <span class="menu-btn__label">Regresar</span>
-        </button>
-      </nav>
-    </div>
-
-    <!-- Panel principal -->
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- PANEL PRINCIPAL -->
+    <!-- ═══════════════════════════════════════════ -->
     <div class="menu-panel" id="main-panel">
-      <div class="brand-tag">Inteligencia Artificial</div>
-      <h1 class="brand-title">Knight<br>Energy</h1>
-      <p class="brand-sub">Caballos oscuros, pociones y reliquias antiguas</p>
 
-      <div class="menu-sep"></div>
+      <h1 class="brand-title">KNIGHT ENERGY</h1>
+
+      <!-- Snitch dorada decorativa -->
+      <div class="snitch-container">
+        <img src="assets/NewSprints/snitch_dorada.png" alt="Snitch Dorada" class="snitch-img" />
+      </div>
 
       <nav class="menu-buttons" aria-label="Menú principal">
+
+        <!-- PLAY -->
         <button id="btn-inicio" class="menu-btn" onclick="irASeleccionNivel()" title="Iniciar partida">
-          <span class="menu-btn__label">Adentrarse a la Partida</span>
-          <span class="menu-btn__badge">Listo</span>
+          <span class="menu-btn__label">PLAY</span>
         </button>
 
-        <button class="menu-btn menu-btn--disabled" disabled title="Próximamente">
-          <span class="menu-btn__label">Grimorio (Reglas)</span>
-          <span class="menu-btn__badge">Comming Soon</span>
+        <!-- LEVEL MAP -->
+        <button id="btn-level-map" class="menu-btn" onclick="window.location.href='RenderMap/index.html'" title="Level Map">
+          <span class="menu-btn__label">LEVEL MAP</span>
+          <img src="assets/NewSprints/icon_map.png" alt="" class="menu-btn__icon-img" />
         </button>
+
+        <!-- GAME EDITOR -->
+        <button id="btn-game-editor" class="menu-btn" onclick="window.location.href='editor.html'" title="Game Editor">
+          <span class="menu-btn__label">GAME EDITOR</span>
+          <img src="assets/NewSprints/setting.png" alt="" class="menu-btn__icon-img" />
+        </button>
+
+        <!-- EXIT -->
+        <button id="btn-exit" class="menu-btn menu-btn--exit" onclick="exitGame()" title="Salir del juego">
+          <span class="menu-btn__label">EXIT</span>
+        </button>
+
       </nav>
 
-      <div class="session-card">
-        <div class="session-card__item">
-          <span class="session-card__label">IA (Blanco)</span>
-          <span class="session-card__value">Minimax</span>
-        </div>
-        <div class="session-card__divider"></div>
-        <div class="session-card__item">
-          <span class="session-card__label">Tú (Negro)</span>
-          <span class="session-card__value">Jugador</span>
-        </div>
-      </div>
+      <footer class="menu-footer">
+        <span>Version 1.0 (Prototype) | © Knight Energy Games</span>
+      </footer>
+
     </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- PANEL DE SELECCIÓN DE DIFICULTAD -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="nivel-panel" class="menu-panel" style="display: none; opacity: 0;">
+
+      <h1 class="brand-title">KNIGHT ENERGY</h1>
+      <h2 class="brand-subtitle">SELECCIONAR DIFICULTAD</h2>
+
+      <!-- Snitch dorada decorativa -->
+      <div class="snitch-container">
+        <img src="assets/NewSprints/snitch_dorada.png" alt="Snitch Dorada" class="snitch-img" />
+      </div>
+
+      <nav class="menu-buttons" aria-label="Selección de dificultad">
+
+        <!-- PRINCIPIANTE - Depth 2 -->
+        <div class="difficulty-btn-wrapper">
+          <img src="assets/NewSprints/depth_2.png"   alt="Depth 2"   class="diff-side diff-side--left" />
+          <button id="btn-principiante" class="menu-btn menu-btn--difficulty" onclick="seleccionarNivelYJugar('principiante')" title="Profundidad 2">
+            <span class="menu-btn__label">PRINCIPIANTE</span>
+          </button>
+          <img src="assets/NewSprints/warrior_1.png" alt="Warrior 1" style="scale: 0.65; transform: translateY(-80%);" class="diff-side diff-side--right" />
+        </div>
+
+        <!-- AMATEUR - Depth 4 -->
+        <div class="difficulty-btn-wrapper">
+          <img src="assets/NewSprints/depth_4.png"   alt="Depth 4"   class="diff-side diff-side--left" />
+          <button id="btn-amateur" class="menu-btn menu-btn--difficulty" onclick="seleccionarNivelYJugar('amateur')" title="Profundidad 4">
+            <span class="menu-btn__label">AMATEUR</span>
+          </button>
+          <img src="assets/NewSprints/warrior_2.png" alt="Warrior 2" style="scale: 0.7; transform: translateY(-70%);" class="diff-side diff-side--right" />
+        </div>
+
+        <!-- EXPERTO - Depth 6 -->
+        <div class="difficulty-btn-wrapper">
+          <img src="assets/NewSprints/depth_6.png"   alt="Depth 6"   class="diff-side diff-side--left" />
+          <button id="btn-experto" class="menu-btn menu-btn--difficulty" onclick="seleccionarNivelYJugar('experto')" title="Profundidad 6">
+            <span class="menu-btn__label">EXPERTO</span>
+          </button>
+          <img src="assets/NewSprints/warrior_3.png" alt="Warrior 3" class="diff-side diff-side--right" />
+        </div>
+
+        <!-- REGRESAR -->
+        <button id="btn-regresar" class="menu-btn menu-btn--back" onclick="regresarAlMenu()" title="Volver al menú">
+          <span class="menu-btn__label">REGRESAR</span>
+        </button>
+
+      </nav>
+
+      <footer class="menu-footer">
+        <span>© Knight Energy Games</span>
+      </footer>
+
+    </div>
+
   </main>
 
-  <div class="authors-tag">
-    Samuel Arenas V. 202341928<br>
-    María J. Saavedra 2023-3743<br>
-    Alejandro L. Quintero 2023-3743<br>
-    Juan D. Rincón 2023-3743
-  </div>
-  <div class="version-tag">Knight Energy v1.0</div>
+  <!-- Sparkle decorativo esquina inferior derecha -->
+  <div class="sparkle-corner" aria-hidden="true">✦</div>
 
   <script src="/eel.js" onerror="console.warn('eel.js no disponible')"></script>
   <script src="api.js"></script>

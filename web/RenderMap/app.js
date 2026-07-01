@@ -8,6 +8,23 @@ const GRID = 8;
 const ASSET_BASE = '../assets/NewSprints/';
 const SOUND_BASE = '../assets/Sounds/';
 
+function getPlayerLegalMoves(estado) {
+  const whitePos = estado.white_pos || [0, 0];
+  const blackPos = estado.black_pos || [0, 0];
+  const moves = [
+    [whitePos[0] + 2, whitePos[1] + 1], [whitePos[0] + 2, whitePos[1] - 1],
+    [whitePos[0] - 2, whitePos[1] + 1], [whitePos[0] - 2, whitePos[1] - 1],
+    [whitePos[0] + 1, whitePos[1] + 2], [whitePos[0] + 1, whitePos[1] - 2],
+    [whitePos[0] - 1, whitePos[1] + 2], [whitePos[0] - 1, whitePos[1] - 2]
+  ];
+  return moves.filter(([r, c]) => {
+    if (r < 0 || r >= GRID || c < 0 || c >= GRID) return false;
+    if (r === whitePos[0] && c === whitePos[1]) return false;
+    if (r === blackPos[0] && c === blackPos[1]) return false;
+    return true;
+  });
+}
+
 // ── Sonido hover para botones ──────────────────────────────
 const hoverSound = new Audio(`${SOUND_BASE}select_menu_sound.mp3`);
 hoverSound.preload = 'auto';
@@ -100,7 +117,6 @@ function renderBoard(estado) {
   const blackPos = estado.black_pos;
   const stars = estado.stars || {};      
   const energyTiles = estado.energy_tiles || {}; 
-  const validMoves = estado.valid_moves || [];
 
   // Update Horses positions (smooth animation)
   const wHorse = document.getElementById('horse-white');
@@ -123,14 +139,15 @@ function renderBoard(estado) {
       const key = `${r},${c}`;
       const starVal = stars[key];
       const potionVal = energyTiles[key];
-      const isValid = validMoves.some(m => m[0] === r && m[1] === c);
+      const legalMoves = getPlayerLegalMoves(estado);
+      const isValid = legalMoves.some(move => move[0] === r && move[1] === c);
+      const isOccupied = (r === whitePos[0] && c === whitePos[1]) || (r === blackPos[0] && c === blackPos[1]);
 
       cell.className = 'cell'; // reset classes keeping DOM intact
-      cell.onclick = isValid ? () => onCellClick(r, c) : null;
+      cell.onclick = (!isOccupied && isValid) ? () => onCellClick(r, c) : null;
       if (isValid) {
         cell.classList.add('cell--valid');
       }
-
       const currentItemType = cell.dataset.itemType || '';
       const currentItemVal = cell.dataset.itemVal || '';
       let newItemType = '';
@@ -195,8 +212,10 @@ function updateHUD(estado) {
   if (turnLabel) {
     if (estado.game_over) {
       turnLabel.textContent = 'PARTIDA TERMINADA';
+    } else if (estado.current_turn) {
+      turnLabel.textContent = estado.current_turn === 'white' ? 'YOUR TURN' : 'IA TURN';
     } else {
-      turnLabel.textContent = estado.current_turn === 'white' ? 'PLAYER (AI)' : 'YOUR TURN';
+      turnLabel.textContent = 'YOUR TURN';
     }
   }
 
@@ -206,6 +225,8 @@ function updateHUD(estado) {
     const info = NIVEL_MAP[estado.nivel] || { label: estado.nivel.toUpperCase() };
     diffLabel.textContent = `DIFFICULTY: ${info.label}`;
   }
+
+  currentGameState = estado;
 
   // Animación dopamínica y sonidos si los stats del jugador (White) suben del estado anterior
   if (previousState && estado.current_turn === 'black') {
@@ -278,16 +299,27 @@ function showGameOver(estado) {
 // CELL CLICK (jugador humano)
 // ═══════════════════════════════════════════════════════════
 
+let currentGameState = null;
+window.debugMode = false;
+
+window.onDebugMode = function(enabled) {
+  window.debugMode = !!enabled;
+  mostrarToast(`Debug ${window.debugMode ? 'ACTIVADO' : 'DESACTIVADO'}`, 2200);
+};
+
 function onCellClick(row, col) {
-  // Simulando que el FRONTEND llama al backend y este devuelve estado actualizado:
-  // Como estamos probando un mockup en main.py, dejaremos esto delegable:
-  if (typeof eel !== 'undefined') {
-    eel.mover_humano(row, col)(estado_nuevo => {
-      if(estado_nuevo) updateHUD(estado_nuevo);
-    });
-  } else {
-    mostrarToast(`Movimiento seleccionado: (${row}, ${col})`);
+  if (window.debugMode && currentGameState) {
+    const debugPayload = {
+      ...currentGameState,
+      debug_move: [row, col]
+    };
+    if (typeof eel !== 'undefined' && eel.dev_show_state) {
+      eel.dev_show_state(debugPayload)();
+    }
+    mostrarToast(`Debug: movimiento de jugador a (${row}, ${col})`, 1800);
+    return;
   }
+  mostrarToast(`Movimiento seleccionado: (${row}, ${col})`);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -296,8 +328,8 @@ function onCellClick(row, col) {
 
 async function cargarPartida() {
   try {
-    if (typeof eel !== 'undefined') {
-      const estadoMock = await eel.get_initial_mock_state()();
+    if (typeof eel !== 'undefined' && eel.solicitar_mapa_aleatorio) {
+      const estadoMock = await eel.solicitar_mapa_aleatorio()();
       if (estadoMock) {
         updateHUD(estadoMock);
         return;
@@ -369,9 +401,9 @@ window.nuevaPartida = async function () {
 
   isBoardInitialized = false;
 
-  if (typeof eel !== 'undefined') {
-    const estadoMock = await eel.get_initial_mock_state()();
-    updateHUD(estadoMock);
+  if (typeof eel !== 'undefined' && eel.solicitar_mapa_aleatorio) {
+    const estadoMock = await eel.solicitar_mapa_aleatorio()();
+    if (estadoMock) updateHUD(estadoMock);
   }
   mostrarToast('Nueva partida inicializada');
 };

@@ -1,98 +1,71 @@
 import eel
-import random
-
+from types import SimpleNamespace
+from GameState import GameState
+from GameKnightEnergy import get_best_movement, build_random_map_state, is_end_game
 
 eel.init("web")
 
-mock_state = {} # Initialize global variable
+debug_mode = True
+machine_move_mode = "infinite"  # options: "infinite", "valid_moves", "minmax"
 
-# Definición de la función para reiniciar/obtener estado
-@eel.expose
-def get_initial_mock_state():
-    global mock_state
-    mock_state = {
-        "board_size": 8,
-        "nivel": "amateur",
-        "white_pos": [6, 1], # Jugador
-        "black_pos": [1, 5], # IA
-        "stars": {
-            "2,2": 5, "3,4": 5, "4,6": 5,
-            "1,0": 5, "2,4": 5, "5,1": 5, "5,7": 5
-        },
-        "energy_tiles": {
-            "1,3": 3, "3,2": 3, "4,4": 3, "1,6": 3
-        },
-        "white_energy": 7,
-        "black_energy": 7,
-        "white_points": 0,
-        "black_points": 0,
-        "current_turn": "white",
-        "game_over": False,
-        "winner": None,
-        "message": "Partida simulada iniciada",
-        "valid_moves": [
-            [4, 0], [4, 2], [5, 3], [7, 3] # Movimientos válidos de caballo para (6,1) Jugador
-        ]
-    }
-    return mock_state
+def normalize_state(state):
+    if isinstance(state, dict):
+        return SimpleNamespace(**state)
+    return state
 
 @eel.expose
-def mover_humano(row, col):
-    """
-    Mockup: El humano mueve a (row, col). Descontamos energía, sumamos posibles
-    puntos (snitch) o energía (poción), y luego la IA realiza un movimiento aleatorio.
-    """
-    global mock_state
-    
-    # 1. MOVER AL HUMANO (Blanco)
-    mock_state["white_pos"] = [row, col]
-    k = f"{row},{col}"
-    
-    if k in mock_state["stars"]:
-        mock_state["white_points"] += mock_state["stars"].pop(k)
-        
-    if k in mock_state["energy_tiles"]:
-        mock_state["white_energy"] += mock_state["energy_tiles"].pop(k)
-        
-    mock_state["white_energy"] -= 1 # Costo de mover
-    mock_state["current_turn"] = "black"
-    mock_state["valid_moves"] = []
-    
-    # Notificamos que humano movió para reproducir sonido de inmediato
-    eel.onEstadoActualizado(mock_state)
-    
-    # Simulamos que la IA procesa
-    eel.sleep(0.8)
-    
-    # 2. MOVER A LA IA (Caballo Negro)
-    br, bc = mock_state["black_pos"]
-    posibles = [(br+2, bc+1), (br+2, bc-1), (br-2, bc+1), (br-2, bc-1),
-                (br+1, bc+2), (br+1, bc-2), (br-1, bc+2), (br-1, bc-2)]
-    validas = [(r, c) for r, c in posibles if 0 <= r < 8 and 0 <= c < 8]
-    best = validas[0] if validas else (br, bc)
-    
-    mock_state["black_pos"] = list(best)
-    bk = f"{best[0]},{best[1]}"
-    
-    if bk in mock_state["stars"]:
-        mock_state["black_points"] += mock_state["stars"].pop(bk)
-    if bk in mock_state["energy_tiles"]:
-        mock_state["black_energy"] += mock_state["energy_tiles"].pop(bk)
-        
-    mock_state["black_energy"] -= 1
-    mock_state["current_turn"] = "white"
-    
-    # 3. Calcular los próximos movimientos válidos para el humano
-    wr, wc = mock_state["white_pos"]
-    w_cand = [(wr+2, wc+1), (wr+2, wc-1), (wr-2, wc+1), (wr-2, wc-1),
-              (wr+1, wc+2), (wr+1, wc-2), (wr-1, wc+2), (wr-1, wc-2)]
-    mock_state["valid_moves"] = [[r, c] for r, c in w_cand if 0 <= r < 8 and 0 <= c < 8]
-    
-    return mock_state
+def solicitar_mapa_aleatorio():
+    """Envía un diccionario de estado de mapa aleatorio al frontend."""
+    return build_random_map_state()
+
+
+@eel.expose
+def set_debug_mode(enabled):
+    global debug_mode
+    debug_mode = bool(enabled)
+    if hasattr(eel, 'onDebugMode'):
+        eel.onDebugMode(debug_mode)
+    return debug_mode
+
+@eel.expose
+def dev_show_state(estado):
+    state_obj = normalize_state(estado)
+    game_state = GameState(state_obj)
+    if hasattr(estado, 'debug_move') or isinstance(estado, dict) and estado.get('debug_move') is not None:
+        print("Debug move enviado al backend:", estado.get('debug_move') if isinstance(estado, dict) else getattr(estado, 'debug_move', None))
+    game_state.show_state()
+    return True
+
+@eel.expose
+def set_machine_move_mode(mode):
+    global machine_move_mode
+    if mode in ("infinite", "valid_moves", "minmax"):
+        machine_move_mode = mode
+    return machine_move_mode
 
 @eel.expose
 def obtener_movimiento_ia(estado, profundidad):
-    return {"movimiento": [4, 2]} # Placeholder clásico original
+    if is_end_game(estado):
+        return {"movimiento": None, "mensaje": "El juego ha terminado."}
+
+    state_obj = normalize_state(estado)
+    game_state = GameState(state_obj)
+    if debug_mode:
+        game_state.show_state()
+
+    movimiento = None
+    valid_moves = game_state.get_valid_moves() if hasattr(game_state, 'get_valid_moves') else []
+    if machine_move_mode == "valid_moves":
+        movimiento = valid_moves[0] if valid_moves else None
+    elif machine_move_mode == "infinite":
+        movimiento = valid_moves[0] if valid_moves else None
+    else:
+        movimiento = get_best_movement(game_state, profundidad)
+
+    if is_end_game(game_state):
+        return {"movimiento": movimiento, "mensaje": "El juego ha terminado por la IA.", "mode": machine_move_mode}
+
+    return {"movimiento": movimiento, "mode": machine_move_mode}
 
 
 if __name__ == "__main__":

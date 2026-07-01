@@ -44,24 +44,20 @@ def verify_state_values(state):
     
     return True
 
+
 def is_end_game(state):
     """
     Función que verifica si el juego ha terminado.
     """
-    if state is None:
-        return True
-    if hasattr(state, 'get_valid_moves'):
-        return len(state.get_valid_moves()) == 0
-    if isinstance(state, dict):
-        return not bool(state.get('valid_moves'))
+
     return False
-    
+
+
 def build_random_map_state():
     """Generador de mapa aleatorio.
 
     Esta función devuelve un diccionario con la forma esperada por el frontend y
-    por GameState. No se desarrolla la lógica de generación completa aquí; solo
-    se deja el diseño y la estructura de datos.
+    por GameState. Se usa únicamente para posicionar elementos en el inicio.
     """
     return {
         "white_pos": [0, 0],              # IA (caballo blanco)
@@ -75,13 +71,6 @@ def build_random_map_state():
             "1,3": 3,
             "3,2": 2,
             "4,4": 5,
-        },
-        "white_energy": 7,
-        "black_energy": 7,
-        "white_points": 0,
-        "black_points": 0,
-        "current_turn": "black",
-        "game_over": False,
-        "winner": None,
-        "valid_moves": []
+        }
     }
+

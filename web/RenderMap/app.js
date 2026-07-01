@@ -8,21 +8,106 @@ const GRID = 8;
 const ASSET_BASE = '../assets/NewSprints/';
 const SOUND_BASE = '../assets/Sounds/';
 
-function getPlayerLegalMoves(estado) {
+function getLegalMoves(estado, turn = estado.current_turn || 'black') {
   const whitePos = estado.white_pos || [0, 0];
   const blackPos = estado.black_pos || [0, 0];
+  const energy = turn === 'white' ? estado.white_energy : estado.black_energy;
+  if (typeof energy !== 'number' || energy < 1) {
+    return [];
+  }
+
+  const source = turn === 'white' ? whitePos : blackPos;
   const moves = [
-    [whitePos[0] + 2, whitePos[1] + 1], [whitePos[0] + 2, whitePos[1] - 1],
-    [whitePos[0] - 2, whitePos[1] + 1], [whitePos[0] - 2, whitePos[1] - 1],
-    [whitePos[0] + 1, whitePos[1] + 2], [whitePos[0] + 1, whitePos[1] - 2],
-    [whitePos[0] - 1, whitePos[1] + 2], [whitePos[0] - 1, whitePos[1] - 2]
+    [source[0] + 2, source[1] + 1], [source[0] + 2, source[1] - 1],
+    [source[0] - 2, source[1] + 1], [source[0] - 2, source[1] - 1],
+    [source[0] + 1, source[1] + 2], [source[0] + 1, source[1] - 2],
+    [source[0] - 1, source[1] + 2], [source[0] - 1, source[1] - 2]
   ];
+
   return moves.filter(([r, c]) => {
     if (r < 0 || r >= GRID || c < 0 || c >= GRID) return false;
     if (r === whitePos[0] && c === whitePos[1]) return false;
     if (r === blackPos[0] && c === blackPos[1]) return false;
     return true;
   });
+}
+
+function cloneState(estado) {
+  return JSON.parse(JSON.stringify(estado));
+}
+
+function isSameMove(moveA, moveB) {
+  return Array.isArray(moveA) && Array.isArray(moveB) && moveA[0] === moveB[0] && moveA[1] === moveB[1];
+}
+
+function applyMove(estado, movimiento) {
+  const next = cloneState(estado);
+  const turn = estado.current_turn || 'black';
+  const targetKey = turn === 'white' ? 'white_pos' : 'black_pos';
+  const energyKey = turn === 'white' ? 'white_energy' : 'black_energy';
+  const pointsKey = turn === 'white' ? 'white_points' : 'black_points';
+
+  next[targetKey] = [movimiento[0], movimiento[1]];
+  next[energyKey] = Math.max(0, (next[energyKey] || 0) - 1);
+
+  const key = `${movimiento[0]},${movimiento[1]}`;
+  if (next.stars && next.stars[key] !== undefined) {
+    next[pointsKey] = (next[pointsKey] || 0) + next.stars[key];
+    delete next.stars[key];
+  } else if (next.energy_tiles && next.energy_tiles[key] !== undefined) {
+    next[energyKey] = (next[energyKey] || 0) + next.energy_tiles[key];
+    delete next.energy_tiles[key];
+  }
+
+  next.current_turn = turn === 'white' ? 'black' : 'white';
+  next.valid_moves = getLegalMoves(next, next.current_turn);
+
+  if (!next.valid_moves || next.valid_moves.length === 0) {
+    next.game_over = true;
+    if ((next.white_points || 0) > (next.black_points || 0)) {
+      next.winner = 'white';
+    } else if ((next.black_points || 0) > (next.white_points || 0)) {
+      next.winner = 'black';
+    } else {
+      next.winner = 'draw';
+    }
+  } else {
+    next.game_over = false;
+    next.winner = null;
+  }
+
+  return next;
+}
+
+async function processAIMove() {
+  if (!currentGameState || currentGameState.game_over || currentGameState.current_turn !== 'white') {
+    return;
+  }
+
+  const depth = NIVEL_MAP[currentGameState.nivel]?.depth || 2;
+  mostrarToast('IA calculando movimiento...', 1800);
+
+  let movimiento = null;
+  if (typeof eel !== 'undefined' && eel.obtener_movimiento_ia) {
+    const response = await obtenerMovimientoIA(currentGameState, depth);
+    movimiento = response?.movimiento || null;
+  }
+
+  if (!movimiento || !Array.isArray(movimiento)) {
+    const validMoves = getLegalMoves(currentGameState, 'white');
+    movimiento = validMoves.length > 0 ? validMoves[0] : null;
+  }
+
+  if (!movimiento || !Array.isArray(movimiento)) {
+    currentGameState.game_over = true;
+    currentGameState.winner = (currentGameState.white_points >= currentGameState.black_points) ? 'white' : 'black';
+    updateHUD(currentGameState);
+    return;
+  }
+
+  currentGameState = applyMove(currentGameState, movimiento);
+  mostrarToast(`IA movió a (${movimiento[0]}, ${movimiento[1]})`, 1500);
+  updateHUD(currentGameState);
 }
 
 // ── Sonido hover para botones ──────────────────────────────
@@ -99,12 +184,12 @@ function renderBoard(estado) {
     const whiteHorse = document.createElement('div');
     whiteHorse.id = 'horse-white';
     whiteHorse.className = 'cell__piece horse-piece';
-    whiteHorse.innerHTML = `<div class="cell__shadow"></div><img src="${ASSET_BASE}player.png" alt="Player" class="cell__img" />`;
+    whiteHorse.innerHTML = `<div class="cell__shadow"></div><img src="${ASSET_BASE}enemy_player.png" alt="IA" class="cell__img" />`;
     
     const blackHorse = document.createElement('div');
     blackHorse.id = 'horse-black';
     blackHorse.className = 'cell__piece horse-piece';
-    blackHorse.innerHTML = `<div class="cell__shadow"></div><img src="${ASSET_BASE}enemy_player.png" alt="Enemy" class="cell__img" />`;
+    blackHorse.innerHTML = `<div class="cell__shadow"></div><img src="${ASSET_BASE}player.png" alt="Jugador" class="cell__img" />`;
 
     horsesContainer.appendChild(whiteHorse);
     horsesContainer.appendChild(blackHorse);
@@ -139,7 +224,7 @@ function renderBoard(estado) {
       const key = `${r},${c}`;
       const starVal = stars[key];
       const potionVal = energyTiles[key];
-      const legalMoves = getPlayerLegalMoves(estado);
+      const legalMoves = estado.current_turn === 'black' ? getLegalMoves(estado, 'black') : [];
       const isValid = legalMoves.some(move => move[0] === r && move[1] === c);
       const isOccupied = (r === whitePos[0] && c === whitePos[1]) || (r === blackPos[0] && c === blackPos[1]);
 
@@ -202,10 +287,11 @@ function updateHUD(estado) {
   const be = document.getElementById('black-energy');
   const bp = document.getElementById('black-points');
 
-  if (we) we.textContent = estado.white_energy;
-  if (wp) wp.textContent = estado.white_points;
-  if (be) be.textContent = estado.black_energy;
-  if (bp) bp.textContent = estado.black_points;
+  // El panel izquierdo en la UI es el jugador negro, el derecho es la IA blanca.
+  if (we) we.textContent = estado.black_energy;
+  if (wp) wp.textContent = estado.black_points;
+  if (be) be.textContent = estado.white_energy;
+  if (bp) bp.textContent = estado.white_points;
 
   // Turnos
   const turnLabel = document.getElementById('turn-label');
@@ -213,9 +299,9 @@ function updateHUD(estado) {
     if (estado.game_over) {
       turnLabel.textContent = 'PARTIDA TERMINADA';
     } else if (estado.current_turn) {
-      turnLabel.textContent = estado.current_turn === 'white' ? 'YOUR TURN' : 'IA TURN';
+      turnLabel.textContent = estado.current_turn === 'white' ? 'TURNO IA' : 'TURNO JUGADOR';
     } else {
-      turnLabel.textContent = 'YOUR TURN';
+      turnLabel.textContent = 'TURNO JUGADOR';
     }
   }
 
@@ -228,11 +314,11 @@ function updateHUD(estado) {
 
   currentGameState = estado;
 
-  // Animación dopamínica y sonidos si los stats del jugador (White) suben del estado anterior
-  if (previousState && estado.current_turn === 'black') {
-    // Es turno de IA (es decir, el humano blanco acaba de mover)
-    const r = estado.white_pos[0];
-    const c = estado.white_pos[1];
+  // Animación dopamínica y sonidos si los stats del jugador (Negro) suben tras su movimiento
+  if (previousState && estado.current_turn === 'white') {
+    // Es turno de IA, lo que significa que el jugador negro acaba de mover
+    const r = estado.black_pos[0];
+    const c = estado.black_pos[1];
     const key = `${r},${c}`;
     
     if (previousState.stars && previousState.stars[key] !== undefined) {
@@ -308,7 +394,11 @@ window.onDebugMode = function(enabled) {
 };
 
 function onCellClick(row, col) {
-  if (window.debugMode && currentGameState) {
+  if (!currentGameState || currentGameState.game_over) {
+    return;
+  }
+
+  if (window.debugMode) {
     const debugPayload = {
       ...currentGameState,
       debug_move: [row, col]
@@ -319,7 +409,27 @@ function onCellClick(row, col) {
     mostrarToast(`Debug: movimiento de jugador a (${row}, ${col})`, 1800);
     return;
   }
-  mostrarToast(`Movimiento seleccionado: (${row}, ${col})`);
+
+  if (currentGameState.current_turn !== 'black') {
+    mostrarToast('No es tu turno. Espera al caballo blanco.', 1800);
+    return;
+  }
+
+  const validMoves = getLegalMoves(currentGameState, 'black');
+  const selectedValid = validMoves.some(move => move[0] === row && move[1] === col);
+  if (!selectedValid) {
+    mostrarToast('Movimiento inválido para el caballo negro.', 1800);
+    return;
+  }
+
+  currentGameState = applyMove(currentGameState, [row, col]);
+  updateHUD(currentGameState);
+
+  if (!currentGameState.game_over) {
+    setTimeout(() => {
+      processAIMove();
+    }, 300);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -331,7 +441,22 @@ async function cargarPartida() {
     if (typeof eel !== 'undefined' && eel.solicitar_mapa_aleatorio) {
       const estadoMock = await eel.solicitar_mapa_aleatorio()();
       if (estadoMock) {
-        updateHUD(estadoMock);
+        const nivelGuardado = localStorage.getItem('knight_nivel_seleccionado') || 'principiante';
+        const defaultState = {
+          white_energy: 7,
+          black_energy: 7,
+          white_points: 0,
+          black_points: 0,
+          current_turn: 'white',
+          game_over: false,
+          winner: null,
+          nivel: nivelGuardado
+        };
+        currentGameState = { ...defaultState, ...estadoMock };
+        updateHUD(currentGameState);
+        if (currentGameState.current_turn === 'white') {
+          await processAIMove();
+        }
         return;
       }
     }
@@ -373,12 +498,14 @@ async function cargarPartida() {
       black_energy: 7,
       white_points: 0,
       black_points: 0,
-      current_turn: 'black',
+      current_turn: 'white',
       game_over: false,
       winner: null,
       valid_moves: []
     };
-    updateHUD(estadoInicial);
+    currentGameState = estadoInicial;
+    updateHUD(currentGameState);
+    await processAIMove();
   } catch (e) {
     console.error('Error cargando partida:', e);
   }
@@ -400,11 +527,7 @@ window.nuevaPartida = async function () {
   entrySound.play().catch(()=>{});
 
   isBoardInitialized = false;
-
-  if (typeof eel !== 'undefined' && eel.solicitar_mapa_aleatorio) {
-    const estadoMock = await eel.solicitar_mapa_aleatorio()();
-    if (estadoMock) updateHUD(estadoMock);
-  }
+  await cargarPartida();
   mostrarToast('Nueva partida inicializada');
 };
 

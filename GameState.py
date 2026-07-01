@@ -21,7 +21,7 @@ class GameState():
         self.black_energy = _get_state_field(state, "black_energy")   # Jugador 
         self.white_points = _get_state_field(state, "white_points")   # IA (maquina)
         self.black_points = _get_state_field(state, "black_points")   # Jugador
-        self.current_turn = _get_state_field(state, "current_turn") or "white"   # La IA es el turno white y la del jugador es black (opcional)
+        self.current_turn = _get_state_field(state, "current_turn")   # La IA es el turno white y la del jugador es black (opcional)
         
     def show_state(self):
         print("White Position:", self.white_pos)

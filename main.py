@@ -6,7 +6,7 @@ from GameKnightEnergy import get_best_movement, build_random_map_state, is_end_g
 eel.init("web")
 
 debug_mode = True
-machine_move_mode = "infinite"  # options: "infinite", "valid_moves", "minmax"
+machine_move_mode = "infinite"  # options: "infinite", "minmax"
 
 def normalize_state(state):
     if isinstance(state, dict):
@@ -28,36 +28,23 @@ def set_debug_mode(enabled):
     return debug_mode
 
 @eel.expose
-def dev_show_state(estado):
-    state_obj = normalize_state(estado)
-    game_state = GameState(state_obj)
-    if hasattr(estado, 'debug_move') or isinstance(estado, dict) and estado.get('debug_move') is not None:
-        print("Debug move enviado al backend:", estado.get('debug_move') if isinstance(estado, dict) else getattr(estado, 'debug_move', None))
-    game_state.show_state()
-    return True
-
-@eel.expose
-def set_machine_move_mode(mode):
-    global machine_move_mode
-    if mode in ("infinite", "valid_moves", "minmax"):
-        machine_move_mode = mode
-    return machine_move_mode
-
-@eel.expose
 def obtener_movimiento_ia(estado, profundidad):
+    
+    print(profundidad)
+    
     if is_end_game(estado):
         return {"movimiento": None, "mensaje": "El juego ha terminado."}
 
     state_obj = normalize_state(estado)
     game_state = GameState(state_obj)
+    
     if debug_mode:
         game_state.show_state()
 
     movimiento = None
     valid_moves = game_state.get_valid_moves() if hasattr(game_state, 'get_valid_moves') else []
-    if machine_move_mode == "valid_moves":
-        movimiento = valid_moves[0] if valid_moves else None
-    elif machine_move_mode == "infinite":
+    
+    if machine_move_mode == "infinite":
         movimiento = valid_moves[0] if valid_moves else None
     else:
         movimiento = get_best_movement(game_state, profundidad)
@@ -68,6 +55,16 @@ def obtener_movimiento_ia(estado, profundidad):
     return {"movimiento": movimiento, "mode": machine_move_mode}
 
 
+
+@eel.expose
+def dev_show_state(estado):
+    state_obj = normalize_state(estado)
+    game_state = GameState(state_obj)
+    if hasattr(estado, 'debug_move') or isinstance(estado, dict) and estado.get('debug_move') is not None:
+        print("Debug move enviado al backend:", estado.get('debug_move') if isinstance(estado, dict) else getattr(estado, 'debug_move', None))
+    game_state.show_state()
+    return True
+
 if __name__ == "__main__":
     print("Iniciando Knight Energy con Eel...")
     eel.start(
@@ -77,3 +74,5 @@ if __name__ == "__main__":
         mode="chrome",
         cmdline_args=['--autoplay-policy=no-user-gesture-required']
     )
+
+

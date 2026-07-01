@@ -151,7 +151,7 @@ function renderBoard(estado) {
         if (newItemType === 'snitch') {
           const glowIntensity = starVal >= 6 ? 'cell__glow--high' : (starVal >= 4 ? 'cell__glow--mid' : '');
           cell.innerHTML = `
-            <div class="item-container cell--animate-entry" style="width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;animation-delay:0s">
+            <div class="item-container" style="width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;">
               <div class="cell__glow cell__glow--snitch ${glowIntensity}"></div>
               <img src="${ASSET_BASE}snitch_dorada.png" alt="Snitch" class="cell__img cell__img--snitch" />
               <span class="cell__value">${starVal}</span>
@@ -159,7 +159,7 @@ function renderBoard(estado) {
         } else if (newItemType === 'potion') {
           const glowIntensity = potionVal >= 4 ? 'cell__glow--high' : (potionVal >= 3 ? 'cell__glow--mid' : '');
           cell.innerHTML = `
-            <div class="item-container cell--animate-entry" style="width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;animation-delay:0s">
+            <div class="item-container" style="width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;">
               <div class="cell__glow cell__glow--potion ${glowIntensity}"></div>
               <img src="${ASSET_BASE}energy_potion.png" alt="Potion" class="cell__img cell__img--potion" />
               <span class="cell__value">${potionVal}</span>
@@ -306,12 +306,45 @@ async function cargarPartida() {
 
     // Fallback por si EEL no responde
     const nivelGuardado = localStorage.getItem('knight_nivel_seleccionado') || 'principiante';
+    const editorConfig = JSON.parse(localStorage.getItem('knight_editor_config') || '{}');
+    const boardConfig = editorConfig.board || {};
+    const whitePos = editorConfig.player || [6, 1];
+    const blackPos = editorConfig.opponent || [1, 5];
+
+    const stars = {};
+    const energy_tiles = {};
+    let counterSnitch = 0;
+    let counterPotion = 0;
+
+    Object.entries(boardConfig).forEach(([key, item]) => {
+      // item can be legacy string ('snitch'|'potion') or an object {t: 'snitch'|'potion', v: number}
+      const type = typeof item === 'string' ? item : (item.t || '');
+      const val = typeof item === 'string' ? (type === 'snitch' ? 5 : (type === 'potion' ? 3 : null)) : (item.v || null);
+      if (type === 'snitch') {
+        stars[key] = val || 5;
+        counterSnitch += 1;
+      }
+      if (type === 'potion') {
+        energy_tiles[key] = val || 3;
+        counterPotion += 1;
+      }
+    });
+
     const estadoInicial = {
-      board_size: 8, nivel: nivelGuardado,
-      white_pos: [6, 1], black_pos: [1, 5],
-      stars: {'2,2': 5, '3,4': 5}, energy_tiles: {'1,3': 3},
-      white_energy: 7, black_energy: 7, white_points: 0, black_points: 0,
-      current_turn: 'black', game_over: false, winner: null, valid_moves: []
+      board_size: 8,
+      nivel: nivelGuardado,
+      white_pos: whitePos,
+      black_pos: blackPos,
+      stars,
+      energy_tiles,
+      white_energy: 7,
+      black_energy: 7,
+      white_points: 0,
+      black_points: 0,
+      current_turn: 'black',
+      game_over: false,
+      winner: null,
+      valid_moves: []
     };
     updateHUD(estadoInicial);
   } catch (e) {

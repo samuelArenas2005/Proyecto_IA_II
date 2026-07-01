@@ -9,6 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;900&family=MedievalSharp&display=swap" rel="stylesheet" />
+  <!-- Font Awesome for icon buttons -->
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
   <link rel="stylesheet" href="menu.css" />
 </head>
 <body>
@@ -48,7 +52,7 @@
         </button>
 
         <!-- GAME EDITOR -->
-        <button id="btn-game-editor" class="menu-btn" onclick="window.location.href='editor.html'" title="Game Editor">
+        <button id="btn-game-editor" class="menu-btn" onclick="irAEditor()" title="Game Editor">
           <span class="menu-btn__label">GAME EDITOR</span>
           <img src="assets/NewSprints/setting.png" alt="" class="menu-btn__icon-img" />
         </button>
@@ -119,6 +123,118 @@
         <span>© Knight Energy Games</span>
       </footer>
 
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- PANEL DE EDITOR -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="editor-panel" class="menu-panel editor-layout" style="display: none; opacity: 0;">
+
+      <div class="editor-header">
+        <h1 class="brand-subtitle editor-title">KNIGHT ENERGY - EDITOR DE JUEGO</h1>
+      </div>
+
+      <div class="editor-main">
+        <!-- Left Column -->
+        <div class="editor-left">
+          <div class="editor-section">
+            <h3 class="editor-section-title">CONFIGURACIÓN DE PARTIDA</h3>
+            
+            <div class="editor-config-row">
+              <span class="editor-label">Dificultad:</span>
+              <div class="editor-diff-buttons" id="editor-diff-buttons">
+                <button class="ed-diff-btn active" data-diff="principiante" onclick="seleccionarDificultadEditor(this)">PRINCIPIANTE</button>
+                <button class="ed-diff-btn" data-diff="amateur" onclick="seleccionarDificultadEditor(this)">AMATEUR</button>
+                <button class="ed-diff-btn" data-diff="experto" onclick="seleccionarDificultadEditor(this)">EXPERTO</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px;">
+              <div class="editor-diff-depth" id="editor-diff-depth">Depth 2</div>
+              <div class="editor-mini-actions" style="display:flex;gap:8px;align-items:center;">
+                <button class="mini-icon" title="Eliminar todo" onclick="clearAllBoard()" aria-label="Eliminar todo"><i class="fas fa-trash"></i></button>
+                <button class="mini-icon" title="Aleatorio" onclick="randomizeBoard()" aria-label="Aleatorio"><i class="fas fa-dice"></i></button>
+                <button class="mini-icon" title="Modo eliminar" onclick="setEraseMode()" aria-label="Modo eliminar"><i class="fas fa-eraser"></i></button>
+                <div style="font-size:0.85rem;color:#d6c389;margin-left:6px;">Acciones rápidas</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="editor-board-container">
+            <div class="editor-board" id="editor-board">
+              <!-- cuadricula sin imagen, generada por JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="editor-right">
+          <div class="editor-section">
+            <h3 class="editor-section-title">PALETA DE ELEMENTOS</h3>
+            <p class="editor-instruction">Selecciona un elemento y haz clic en la cuadrícula</p>
+            
+            <div class="editor-palette">
+              <button type="button" class="palette-item" onclick="selectPalette(this)" data-type="snitch">
+                <img src="assets/NewSprints/snitch_dorada.png" alt="Snitch" />
+                <span>PUNTOS:</span>
+                <div class="select-container">
+                  <select class="select-medieval" aria-label="Valor snitch">
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5" selected>5</option>
+                  <option value="6">6</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  </select>
+                </div>
+              </button>
+              <button type="button" class="palette-item" onclick="selectPalette(this)" data-type="potion">
+                <img src="assets/NewSprints/energy_potion.png" alt="Potion" />
+                <span>ENERGÍA:</span>
+                <div class="select-container">
+                    <select class="select-medieval" aria-label="Valor pocion">
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                 </div>
+              </button>
+              <button type="button" class="palette-item" onclick="selectPalette(this)" data-type="player" id="palette-player">
+                <img src="assets/NewSprints/player.png" alt="Player" />
+                <span>JUGADOR</span>
+              </button>
+              <button type="button" class="palette-item" onclick="selectPalette(this)" data-type="opponent" id="palette-opponent">
+                <img src="assets/NewSprints/enemy_player.png" alt="Enemy" />
+                <span>OPONENTE</span>
+              </button>
+            </div>
+
+            <div class="editor-stats">
+              <div><span>Snitches colocadas:</span> <strong id="snitch-count">0</strong></div>
+              <div><span>Pociones colocadas:</span> <strong id="potion-count">0</strong></div>
+              <div><span>Jugador:</span> <strong id="player-count">0/1</strong></div>
+              <div><span>Oponente:</span> <strong id="opponent-count">0/1</strong></div>
+            </div>
+          </div>
+
+          <div class="editor-actions">
+            <div class="editor-mode">
+              <span>Modo:</span>
+              <strong id="editor-mode-label">Colocar</strong>
+              <span style="margin-left:8px;">Seleccionado:</span>
+              <strong id="editor-selected-label">Ninguno</strong>
+            </div>
+            <!-- INICIAR PARTIDA -->
+            <button id="btn-editor-start" class="menu-btn" onclick="iniciarPartidaEditor()" title="Iniciar">
+              <span class="menu-btn__label">INICIAR PARTIDA</span>
+            </button>
+            <button id="btn-editor-back" class="menu-btn menu-btn--back" style="max-width:none" onclick="regresarAlMenuDesdeEditor()" title="Regresar">
+              <span class="menu-btn__label">REGRESAR AL MENÚ</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </main>

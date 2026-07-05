@@ -22,6 +22,7 @@ class GameState():
         self.black_points = _get_state_field(state, "black_points")   # Jugador
         self.current_turn = _get_state_field(state, "current_turn")   # La IA es el turno white y la del jugador es black (opcional)
 
+    @staticmethod
     def _verify_state_values(state):
         """ Verifica que los valores del estado del juego sean válidos. """
         white_pos = _get_state_field(state, "white_pos")
@@ -121,8 +122,16 @@ class GameState():
     def utility_function(self):
         """
         Función de utilidad para determinar el valor del ultimo nodo de profundidad
+        (Nodos terminales).
         """
-        pass
+        winner = self._determine_winner()
+        
+        if winner == "white":
+            return 10000 + (self.white_points - self.black_points)
+        elif winner == "black":
+            return -10000 + (self.white_points - self.black_points)
+        else:
+            return 0 # Empate
 
     def heuristica_utility_function(self):
         """

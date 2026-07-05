@@ -1,7 +1,7 @@
 import eel
 from types import SimpleNamespace
 from GameState import GameState
-from GameKnightEnergy import get_best_movement, build_random_map_state, is_end_game, apply_move
+from GameKnightEnergy import get_best_movement, build_random_map_state
 
 eel.init("web")
 
@@ -35,7 +35,7 @@ def obtener_movimiento_ia(estado, profundidad):
     state_obj = normalize_state(estado)
     game_state = GameState(state_obj)
     
-    if is_end_game(game_state):
+    if game_state.is_end_game():
         return {"movimiento": None, "mensaje": "El juego ha terminado."}
 
     if debug_mode:
@@ -49,7 +49,7 @@ def obtener_movimiento_ia(estado, profundidad):
     else:
         movimiento = get_best_movement(game_state, profundidad)
 
-    if is_end_game(game_state):
+    if game_state.is_end_game():
         return {"movimiento": movimiento, "mensaje": "El juego ha terminado por la IA.", "mode": machine_move_mode}
 
     return {"movimiento": movimiento, "mode": machine_move_mode}
@@ -61,7 +61,9 @@ def aplicar_movimiento(estado, movimiento):
     Single source of truth for all game transitions — called by the frontend
     for both the human player's move and the AI move.
     """
-    return apply_move(estado, movimiento)
+    state_obj = GameState(normalize_state(estado))
+    new_state_obj = state_obj.apply_move(movimiento)
+    return new_state_obj.to_dict()
 
 
 @eel.expose

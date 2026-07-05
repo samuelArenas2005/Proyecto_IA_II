@@ -455,7 +455,9 @@ async function cargarPartida() {
         currentGameState = { ...defaultState, ...estadoMock };
         updateHUD(currentGameState);
         if (currentGameState.current_turn === 'white') {
-          await processAIMove();
+          setTimeout(async () => {
+            await processAIMove();
+          }, 1500);
         }
         return;
       }
@@ -505,7 +507,11 @@ async function cargarPartida() {
     };
     currentGameState = estadoInicial;
     updateHUD(currentGameState);
-    await processAIMove();
+    if (currentGameState.current_turn === 'white') {
+      setTimeout(async () => {
+        await processAIMove();
+      }, 1500);
+    }
   } catch (e) {
     console.error('Error cargando partida:', e);
   }

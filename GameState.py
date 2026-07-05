@@ -1,4 +1,5 @@
 from GameKnightEnergy import verify_state_values
+from GameKnightEnergy import is_end_game as _is_end_game
 
 def _get_state_field(state, name):
     """ Función auxiliar para obtener un campo del estado del juego, 
@@ -69,10 +70,12 @@ class GameState():
 
     def is_end_game(self):
         """
-        Función que retorna un bool, que determina si el nodo expandido es el final del juego, ya sea por falta de movimientos de ambos
-        jugadores o por falta 
+        Returns True if the game is over:
+        - No star tiles remain, OR
+        - Neither player can make a move (no energy or no legal squares)
         """
-        pass
+        
+        return _is_end_game(self)
     
     def get_gamestate_possible(self):
         """

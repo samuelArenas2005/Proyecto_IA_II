@@ -40,44 +40,6 @@ function isSameMove(moveA, moveB) {
   return Array.isArray(moveA) && Array.isArray(moveB) && moveA[0] === moveB[0] && moveA[1] === moveB[1];
 }
 
-function applyMove(estado, movimiento) {
-  const next = cloneState(estado);
-  const turn = estado.current_turn || 'black';
-  const targetKey = turn === 'white' ? 'white_pos' : 'black_pos';
-  const energyKey = turn === 'white' ? 'white_energy' : 'black_energy';
-  const pointsKey = turn === 'white' ? 'white_points' : 'black_points';
-
-  next[targetKey] = [movimiento[0], movimiento[1]];
-  next[energyKey] = Math.max(0, (next[energyKey] || 0) - 1);
-
-  const key = `${movimiento[0]},${movimiento[1]}`;
-  if (next.stars && next.stars[key] !== undefined) {
-    next[pointsKey] = (next[pointsKey] || 0) + next.stars[key];
-    delete next.stars[key];
-  } else if (next.energy_tiles && next.energy_tiles[key] !== undefined) {
-    next[energyKey] = (next[energyKey] || 0) + next.energy_tiles[key];
-    delete next.energy_tiles[key];
-  }
-
-  next.current_turn = turn === 'white' ? 'black' : 'white';
-  next.valid_moves = getLegalMoves(next, next.current_turn);
-
-  if (!next.valid_moves || next.valid_moves.length === 0) {
-    next.game_over = true;
-    if ((next.white_points || 0) > (next.black_points || 0)) {
-      next.winner = 'white';
-    } else if ((next.black_points || 0) > (next.white_points || 0)) {
-      next.winner = 'black';
-    } else {
-      next.winner = 'draw';
-    }
-  } else {
-    next.game_over = false;
-    next.winner = null;
-  }
-
-  return next;
-}
 
 async function processAIMove() {
   if (!currentGameState || currentGameState.game_over || currentGameState.current_turn !== 'white') {
@@ -87,28 +49,28 @@ async function processAIMove() {
   const depth = NIVEL_MAP[currentGameState.nivel]?.depth || 2;
   mostrarToast('IA calculando movimiento...', 1800);
 
-  let movimiento = null;
-  if (typeof eel !== 'undefined' && eel.obtener_movimiento_ia) {
-    const response = await obtenerMovimientoIA(currentGameState, depth);
-    movimiento = response?.movimiento || null;
-  }
+  // Ask the backend for the best move
+  const response = await eel.obtener_movimiento_ia(currentGameState, depth)();
+  const movimiento = response?.movimiento || null;
 
   if (!movimiento || !Array.isArray(movimiento)) {
-    const validMoves = getLegalMoves(currentGameState, 'white');
-    movimiento = validMoves.length > 0 ? validMoves[0] : null;
-  }
-
-  if (!movimiento || !Array.isArray(movimiento)) {
-    currentGameState.game_over = true;
-    currentGameState.winner = (currentGameState.white_points >= currentGameState.black_points) ? 'white' : 'black';
-    updateHUD(currentGameState);
+    mostrarToast('IA sin movimientos disponibles.', 1800);
     return;
   }
 
-  currentGameState = applyMove(currentGameState, movimiento);
+  // Delegate the state transition entirely to the backend
+  const nextState = await eel.aplicar_movimiento(currentGameState, movimiento)();
+  if (!nextState) return;
+
+  currentGameState = nextState;
   mostrarToast(`IA movió a (${movimiento[0]}, ${movimiento[1]})`, 1500);
   updateHUD(currentGameState);
+
+  if (currentGameState.game_over) {
+    showGameOver(currentGameState);
+  }
 }
+
 
 // ── Sonido hover para botones ──────────────────────────────
 const hoverSound = new Audio(`${SOUND_BASE}select_menu_sound.mp3`);
@@ -393,16 +355,13 @@ window.onDebugMode = function(enabled) {
   mostrarToast(`Debug ${window.debugMode ? 'ACTIVADO' : 'DESACTIVADO'}`, 2200);
 };
 
-function onCellClick(row, col) {
+async function onCellClick(row, col) {
   if (!currentGameState || currentGameState.game_over) {
     return;
   }
 
   if (window.debugMode) {
-    const debugPayload = {
-      ...currentGameState,
-      debug_move: [row, col]
-    };
+    const debugPayload = { ...currentGameState, debug_move: [row, col] };
     if (typeof eel !== 'undefined' && eel.dev_show_state) {
       eel.dev_show_state(debugPayload)();
     }
@@ -415,21 +374,27 @@ function onCellClick(row, col) {
     return;
   }
 
+  // Validate locally (for UI feedback only — the backend enforces rules)
   const validMoves = getLegalMoves(currentGameState, 'black');
-  const selectedValid = validMoves.some(move => move[0] === row && move[1] === col);
-  if (!selectedValid) {
+  const isValid = validMoves.some(move => move[0] === row && move[1] === col);
+  if (!isValid) {
     mostrarToast('Movimiento inválido para el caballo negro.', 1800);
     return;
   }
 
-  currentGameState = applyMove(currentGameState, [row, col]);
+  // Delegate the state transition entirely to the backend
+  const nextState = await eel.aplicar_movimiento(currentGameState, [row, col])();
+  if (!nextState) return;
+
+  currentGameState = nextState;
   updateHUD(currentGameState);
 
-  if (!currentGameState.game_over) {
-    setTimeout(() => {
-      processAIMove();
-    }, 300);
+  if (currentGameState.game_over) {
+    showGameOver(currentGameState);
+    return;
   }
+
+  setTimeout(() => { processAIMove(); }, 300);
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -7,6 +7,7 @@
 const GRID = 8;
 const ASSET_BASE = '../assets/NewSprints/';
 const SOUND_BASE = '../assets/Sounds/';
+const GAME_OVER_DELAY_MS = 450;
 
 function getLegalMoves(estado, turn = estado.current_turn || 'black') {
   const whitePos = estado.white_pos || [0, 0];
@@ -40,6 +41,10 @@ function isSameMove(moveA, moveB) {
   return Array.isArray(moveA) && Array.isArray(moveB) && moveA[0] === moveB[0] && moveA[1] === moveB[1];
 }
 
+function showGameOverAfterMove(estado) {
+  setTimeout(() => { showGameOver(estado); }, GAME_OVER_DELAY_MS);
+}
+
 
 async function processAIMove() {
   if (!currentGameState || currentGameState.game_over || currentGameState.current_turn !== 'white') {
@@ -54,7 +59,14 @@ async function processAIMove() {
   const movimiento = response?.movimiento || null;
 
   if (!movimiento || !Array.isArray(movimiento)) {
-    mostrarToast('IA sin movimientos disponibles.', 1800);
+    const nextState = await eel.aplicar_movimiento(currentGameState, null)();
+    if (!nextState) return;
+    currentGameState = nextState;
+    mostrarToast('IA pierde turno (-3 pts).', 1800);
+    updateHUD(currentGameState);
+    if (currentGameState.game_over) {
+      showGameOverAfterMove(currentGameState);
+    }
     return;
   }
 
@@ -67,7 +79,12 @@ async function processAIMove() {
   updateHUD(currentGameState);
 
   if (currentGameState.game_over) {
-    showGameOver(currentGameState);
+    showGameOverAfterMove(currentGameState);
+    return;
+  }
+
+  if (currentGameState.current_turn === 'white') {
+    setTimeout(() => { processAIMove(); }, 600);
   }
 }
 
@@ -95,6 +112,7 @@ potionSound.volume = 0.6;
 snitchSound.volume = 0.6;
 
 let previousState = null;
+let resolvingForcedPass = false;
 
 // ── Niveles ────────────────────────────────────────────────
 const NIVEL_MAP = {
@@ -301,6 +319,30 @@ function updateHUD(estado) {
 
   // Render tablero
   renderBoard(estado);
+
+  if (
+    !resolvingForcedPass &&
+    !estado.game_over &&
+    estado.current_turn === 'black' &&
+    getLegalMoves(estado, 'black').length === 0
+  ) {
+    resolvingForcedPass = true;
+    setTimeout(async () => {
+      const nextState = await eel.aplicar_movimiento(currentGameState, null)();
+      resolvingForcedPass = false;
+      if (!nextState) return;
+      currentGameState = nextState;
+      mostrarToast('Pierdes turno (-3 pts).', 1800);
+      updateHUD(currentGameState);
+      if (currentGameState.game_over) {
+        showGameOverAfterMove(currentGameState);
+        return;
+      }
+      if (currentGameState.current_turn === 'white') {
+        setTimeout(() => { processAIMove(); }, 300);
+      }
+    }, 0);
+  }
 }
 
 function spawnFloatingText(pos, text, type) {
@@ -390,7 +432,7 @@ async function onCellClick(row, col) {
   updateHUD(currentGameState);
 
   if (currentGameState.game_over) {
-    showGameOver(currentGameState);
+    showGameOverAfterMove(currentGameState);
     return;
   }
 
@@ -485,7 +527,7 @@ async function cargarPartida() {
 // ── API pública ────────────────────────────────────────────
 function onEstadoActualizado(estado) {
   updateHUD(estado);
-  if (estado.game_over) showGameOver(estado);
+  if (estado.game_over) showGameOverAfterMove(estado);
 }
 window.onEstadoActualizado = onEstadoActualizado;
 

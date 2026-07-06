@@ -112,11 +112,14 @@ class GameState():
         """
         possible_states = []
         valid_moves = self.get_valid_moves()
+
+        if not self.can_player_move(self.current_turn):
+            return [self.apply_move(None)]
         
         for move in valid_moves:
             new_state = self.apply_move(move)
             possible_states.append(new_state)
-            
+             
         return possible_states
 
     def utility_function(self):
@@ -212,6 +215,37 @@ class GameState():
         turn = next_state.current_turn
         other_turn = "black" if turn == "white" else "white"
 
+        if move is None:
+            if turn == "white":
+                next_state.white_points -= 3
+            else:
+                next_state.black_points -= 3
+
+            if next_state.can_player_move(other_turn):
+                next_state.current_turn = other_turn
+
+            game_is_over = next_state.is_end_game()
+            next_state.game_over = game_is_over
+            next_state.winner = next_state._determine_winner() if game_is_over else None
+            return next_state
+
+        if not next_state.can_player_move(turn):
+            if turn == "white":
+                next_state.white_points -= 3
+            else:
+                next_state.black_points -= 3
+
+            if next_state.can_player_move(other_turn):
+                next_state.current_turn = other_turn
+
+            game_is_over = next_state.is_end_game()
+            next_state.game_over = game_is_over
+            next_state.winner = next_state._determine_winner() if game_is_over else None
+            return next_state
+
+        if list(move) not in next_state.get_valid_moves(turn):
+            raise ValueError("Invalid move for current player")
+
         # Aplicar el movimiento
         if turn == "white":
             next_state.white_pos = list(move)
@@ -248,9 +282,3 @@ class GameState():
         next_state.winner = next_state._determine_winner() if game_is_over else None
 
         return next_state
-
-    
-
-
-        
-    

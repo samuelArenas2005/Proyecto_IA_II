@@ -1,0 +1,238 @@
+\documentclass[12pt,letterpaper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{tcolorbox}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\geometry{margin=2.3cm}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=KEBlue,
+    urlcolor=KEPurple
+}
+
+\definecolor{KEBlue}{HTML}{1D4ED8}
+\definecolor{KEPurple}{HTML}{7C3AED}
+\definecolor{KEGold}{HTML}{F59E0B}
+\definecolor{KEGreen}{HTML}{059669}
+\definecolor{KERed}{HTML}{DC2626}
+\definecolor{KEDark}{HTML}{111827}
+\definecolor{KELight}{HTML}{F8FAFC}
+\definecolor{KEGray}{HTML}{E5E7EB}
+
+\tcbset{
+    colback=KELight,
+    colframe=KEBlue,
+    arc=2mm,
+    boxrule=0.8pt,
+    left=6pt,
+    right=6pt,
+    top=6pt,
+    bottom=6pt
+}
+
+\lstdefinestyle{kePython}{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{KEBlue}\bfseries,
+    commentstyle=\color{KEGreen},
+    stringstyle=\color{KEPurple},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=8pt,
+    frame=single,
+    rulecolor=\color{KEGray},
+    breaklines=true,
+    tabsize=4,
+    showstringspaces=false
+}
+
+\pagestyle{fancy}
+\setlength{\headheight}{15pt}
+\fancyhf{}
+\lhead{\textcolor{KEBlue}{Knight Energy}}
+\rhead{\textcolor{KEPurple}{Función heurística}}
+\cfoot{\thepage}
+
+\begin{document}
+
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+\thispagestyle{empty}
+\noindent\makebox[\textwidth][c]{%
+\begin{minipage}{\paperwidth}
+\begin{tcolorbox}[colback=KEBlue,colframe=KEBlue,boxrule=0pt,arc=0pt,width=\paperwidth,left=0pt,right=0pt,top=18mm,bottom=16mm]
+\begin{center}
+{\color{white}\Huge\bfseries Informe de Función Heurística\par}
+\vspace{0.35cm}
+{\color{white}\Large Proyecto 2 - Knight Energy\par}
+\end{center}
+\end{tcolorbox}
+\begin{tcolorbox}[colback=KEPurple,colframe=KEPurple,boxrule=0pt,arc=0pt,width=\paperwidth,height=3mm,left=0pt,right=0pt,top=0pt,bottom=0pt]
+\end{tcolorbox}
+\end{minipage}
+}
+\vspace{1.45cm}
+
+\begin{tcolorbox}[colframe=KEPurple,title=\textbf{Integrantes},coltitle=white,colbacktitle=KEPurple]
+\begin{tabular}{>{\bfseries}p{8.2cm}p{5cm}}
+Samuel Arenas Valencia & 202341928-3743\\
+María Juliana Saavedra & 2023-3743\\
+Libardo Alejandro Quintero & 2023-3743\\
+Juan David Rincón & 202332032-3743\\
+\end{tabular}
+\end{tcolorbox}
+
+\vfill
+\begin{center}
+\textcolor{KEDark}{\large Inteligencia Artificial}\\[2mm]
+\textcolor{KEDark}{\large Universidad del Valle}\\[2mm]
+\textcolor{KEDark}{\large 2026-I}
+\end{center}
+\end{titlepage}
+\hypersetup{pageanchor=true}
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\section{Contexto del problema}
+
+Knight Energy es un juego adversarial entre dos caballos sobre un tablero de ajedrez. La máquina juega con el caballo blanco (\textit{white}) y el jugador humano con el caballo negro (\textit{black}). El objetivo de la inteligencia artificial es elegir movimientos que aumenten sus posibilidades de terminar la partida con más puntos que el rival.
+
+\begin{tcolorbox}[colframe=KEGold,title=\textbf{Idea central},coltitle=KEDark,colbacktitle=KEGold!35]
+El algoritmo minimax necesita una forma de valorar los estados del juego. Cuando el estado es final, se usa una función de utilidad. Cuando el estado no es final pero se alcanzó la profundidad límite del árbol, se usa una función heurística ponderada.
+\end{tcolorbox}
+
+\section{Función de utilidad}
+
+La función de utilidad evalúa estados terminales, es decir, posiciones en las que la partida ya terminó. Como la inteligencia artificial corresponde al caballo blanco, los valores positivos favorecen a la máquina y los valores negativos favorecen al jugador.
+
+\[
+U(s)=
+\begin{cases}
+10000 + (P_w - P_b), & \text{si gana white}\\
+-10000 + (P_w - P_b), & \text{si gana black}\\
+0, & \text{si hay empate}
+\end{cases}
+\]
+
+\noindent Donde:
+
+\begin{itemize}
+    \item $P_w$ representa los puntos de la IA.
+    \item $P_b$ representa los puntos del jugador.
+    \item $P_w - P_b$ representa la diferencia de puntos.
+\end{itemize}
+
+El valor $10000$ se usa para que ganar o perder tenga más importancia que cualquier ventaja parcial. Así, minimax prefiere una victoria real sobre una posición intermedia aparentemente favorable.
+
+\section{Función heurística ponderada}
+
+El árbol minimax tiene profundidad limitada según la dificultad seleccionada: profundidad 2 para principiante, profundidad 4 para amateur y profundidad 6 para experto. Por eso, muchas veces el algoritmo no alcanza a llegar hasta un estado terminal. En esos casos, se necesita estimar qué tan bueno es un estado intermedio.
+
+La heurística implementada es:
+
+\[
+\begin{aligned}
+H(s)=
+&100(P_w-P_b)
++10(E_w-E_b)
++5(M_w-M_b)\\
+&+20(A^\star_w-A^\star_b)
++8(A^e_w-A^e_b)
++B(s)
+\end{aligned}
+\]
+
+\noindent Donde:
+
+\begin{itemize}
+    \item $E_w - E_b$ es la diferencia de energía.
+    \item $M_w - M_b$ es la diferencia de movilidad, medida como cantidad de movimientos legales disponibles.
+    \item $A^\star_w - A^\star_b$ es la diferencia entre el valor de estrellas alcanzables en el siguiente movimiento.
+    \item $A^e_w - A^e_b$ es la diferencia entre el valor de casillas de energía alcanzables en el siguiente movimiento.
+    \item $B(s)$ es la bonificación o penalización por bloqueo.
+\end{itemize}
+
+\section{Penalización por bloqueo}
+
+La regla del juego indica que si un jugador no tiene energía suficiente para moverse, pierde el turno y se le descuentan 3 puntos. Por esta razón, la heurística también debe anticipar estados donde un jugador queda sin movimientos efectivos.
+
+\[
+B(s)=
+\begin{cases}
+-50, & \text{si white queda bloqueado}\\
++50, & \text{si black queda bloqueado}\\
+0, & \text{si ninguno queda bloqueado}
+\end{cases}
+\]
+
+\begin{tcolorbox}[colframe=KERed,title=\textbf{Importancia estratégica},coltitle=white,colbacktitle=KERed]
+Si la IA queda bloqueada, el estado se considera peligroso y el valor heurístico disminuye. Si el jugador queda bloqueado, el estado se considera favorable y el valor heurístico aumenta.
+\end{tcolorbox}
+
+\section{Justificación de los pesos}
+
+\begin{center}
+\begin{tabular}{>{\bfseries}p{4.2cm}p{2.2cm}p{8cm}}
+\toprule
+Componente & Peso & Justificación\\
+\midrule
+Diferencia de puntos & 100 & Es el factor más importante porque el ganador se decide por puntos.\\
+Diferencia de energía & 10 & La energía permite seguir moviéndose y evita perder turnos.\\
+Diferencia de movilidad & 5 & Más movimientos disponibles significan más opciones estratégicas.\\
+Estrellas alcanzables & 20 & Las estrellas representan oportunidades inmediatas de obtener puntos.\\
+Energía alcanzable & 8 & La energía ayuda a sostener la partida, pero no da puntos directamente.\\
+Bloqueo & 50 & Anticipa el riesgo de perder turnos y recibir penalizaciones.\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Fragmento de implementación}
+
+\begin{lstlisting}[style=kePython]
+def heuristica_utility_function(self):
+    if self.is_end_game():
+        return self.utility_function()
+
+    white_moves = self.get_valid_moves("white") if self.can_player_move("white") else []
+    black_moves = self.get_valid_moves("black") if self.can_player_move("black") else []
+
+    points_diff = self.white_points - self.black_points
+    energy_diff = self.white_energy - self.black_energy
+    mobility_diff = len(white_moves) - len(black_moves)
+
+    return (
+        100 * points_diff
+        + 10 * energy_diff
+        + 5 * mobility_diff
+        + 20 * star_options_diff
+        + 8 * energy_options_diff
+        + blocked_score
+    )
+\end{lstlisting}
+
+\section{Integración con minimax}
+
+La función heurística se usa cuando minimax alcanza la profundidad máxima y el juego todavía no ha terminado. En cambio, si el estado ya es terminal, se usa la función de utilidad.
+
+\begin{tcolorbox}[colframe=KEBlue,title=\textbf{Criterio de decisión},coltitle=white,colbacktitle=KEBlue]
+En los turnos de \textit{white}, minimax maximiza el valor del estado. En los turnos de \textit{black}, minimax minimiza el valor del estado. De esta forma, la máquina asume que el jugador intentará responder con el movimiento más perjudicial para la IA.
+\end{tcolorbox}
+
+\section{Conclusión}
+
+La heurística ponderada permite que la IA tome decisiones más estratégicas en estados no terminales. La función no solo considera los puntos actuales, sino también la energía, la movilidad, las oportunidades inmediatas de capturar estrellas o recuperar energía, y el riesgo de quedar bloqueado. Esto produce una evaluación más completa del estado del juego y mejora la calidad de las decisiones tomadas por minimax.
+
+\end{document}

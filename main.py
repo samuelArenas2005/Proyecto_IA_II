@@ -6,7 +6,7 @@ from GameKnightEnergy import get_best_movement, build_random_map_state
 eel.init("web")
 
 debug_mode = True
-machine_move_mode = "infinite"  # options: "infinite", "minmax"
+machine_move_mode = "minmax"  # options: "infinite", "minmax"
 
 def normalize_state(state):
     if isinstance(state, dict):

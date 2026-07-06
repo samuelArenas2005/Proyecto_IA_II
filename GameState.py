@@ -41,8 +41,8 @@ class GameState():
         if not isinstance(energy_tiles, dict): return False
         if not isinstance(white_energy, int) or white_energy < 0: return False
         if not isinstance(black_energy, int) or black_energy < 0: return False
-        if not isinstance(white_points, int) or white_points < 0: return False
-        if not isinstance(black_points, int) or black_points < 0: return False
+        if not isinstance(white_points, int): return False
+        if not isinstance(black_points, int): return False
         if current_turn is not None and current_turn not in ["white", "black"]: return False
         return True
 
@@ -124,12 +124,13 @@ class GameState():
         Función de utilidad para determinar el valor del ultimo nodo de profundidad
         (Nodos terminales).
         """
+        points_diff = self.white_points - self.black_points
         winner = self._determine_winner()
         
         if winner == "white":
-            return 10000 + (self.white_points - self.black_points)
+            return 10000 + points_diff
         elif winner == "black":
-            return -10000 + (self.white_points - self.black_points)
+            return -10000 + points_diff
         else:
             return 0 # Empate
 
@@ -137,7 +138,46 @@ class GameState():
         """
         Heurística para evaluar el estado del juego.
         """
-        pass
+        if self.is_end_game():
+            return self.utility_function()
+
+        white_moves = self.get_valid_moves("white") if self.can_player_move("white") else []
+        black_moves = self.get_valid_moves("black") if self.can_player_move("black") else []
+
+        def sum_reachable_values(moves, tiles):
+            total = 0
+            for row, col in moves:
+                total += tiles.get(f"{row},{col}", 0)
+            return total
+
+        points_diff = self.white_points - self.black_points
+        energy_diff = self.white_energy - self.black_energy
+        mobility_diff = len(white_moves) - len(black_moves)
+
+        star_options_diff = (
+            sum_reachable_values(white_moves, self.stars)
+            - sum_reachable_values(black_moves, self.stars)
+        )
+
+        energy_options_diff = (
+            sum_reachable_values(white_moves, self.energy_tiles)
+            - sum_reachable_values(black_moves, self.energy_tiles)
+        )
+
+        blocked_score = 0
+        if not self.can_player_move("white"):
+            blocked_score -= 50
+        if not self.can_player_move("black"):
+            blocked_score += 50
+
+        return (
+            100 * points_diff
+            + 10 * energy_diff
+            + 5 * mobility_diff
+            + 20 * star_options_diff
+            + 8 * energy_options_diff
+            + blocked_score
+        )
 
     def is_end_game(self):
         """

@@ -41,8 +41,8 @@ class GameState():
         if not isinstance(energy_tiles, dict): return False
         if not isinstance(white_energy, int) or white_energy < 0: return False
         if not isinstance(black_energy, int) or black_energy < 0: return False
-        if not isinstance(white_points, int) or white_points < 0: return False
-        if not isinstance(black_points, int) or black_points < 0: return False
+        if not isinstance(white_points, int): return False
+        if not isinstance(black_points, int): return False
         if current_turn is not None and current_turn not in ["white", "black"]: return False
         return True
 

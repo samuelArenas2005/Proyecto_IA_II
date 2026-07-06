@@ -64,8 +64,6 @@ def aplicar_movimiento(estado, movimiento):
     state_obj = GameState(normalize_state(estado))
     new_state_obj = state_obj.apply_move(movimiento)
     return new_state_obj.to_dict()
-
-
 @eel.expose
 def dev_show_state(estado):
     state_obj = normalize_state(estado)

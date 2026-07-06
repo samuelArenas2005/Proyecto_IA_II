@@ -40,7 +40,6 @@ function isSameMove(moveA, moveB) {
   return Array.isArray(moveA) && Array.isArray(moveB) && moveA[0] === moveB[0] && moveA[1] === moveB[1];
 }
 
-
 async function processAIMove() {
   if (!currentGameState || currentGameState.game_over || currentGameState.current_turn !== 'white') {
     return;
@@ -68,6 +67,11 @@ async function processAIMove() {
 
   if (currentGameState.game_over) {
     showGameOver(currentGameState);
+    return;
+  }
+
+  if (currentGameState.current_turn === 'white') {
+    setTimeout(() => { processAIMove(); }, 600);
   }
 }
 
@@ -75,7 +79,7 @@ async function processAIMove() {
 // ── Sonido hover para botones ──────────────────────────────
 const hoverSound = new Audio(`${SOUND_BASE}select_menu_sound.mp3`);
 hoverSound.preload = 'auto';
-hoverSound.volume  = 0.35;
+hoverSound.volume = 0.35;
 
 // ── Música de fondo ────────────────────────────────────────
 const bgTracks = [`${SOUND_BASE}bg_1.mp3`, `${SOUND_BASE}bg_2.mp3`, `${SOUND_BASE}bg_3.mp3`];
@@ -85,7 +89,7 @@ bgAudio.volume = 0.10; // Volumen sutil
 bgAudio.addEventListener('ended', () => {
   currentBgTrack = (currentBgTrack + 1) % bgTracks.length;
   bgAudio.src = bgTracks[currentBgTrack];
-  bgAudio.play().catch(()=>{});
+  bgAudio.play().catch(() => { });
 });
 
 // ── Efectos de Sonido ──────────────────────────────────────
@@ -99,8 +103,8 @@ let previousState = null;
 // ── Niveles ────────────────────────────────────────────────
 const NIVEL_MAP = {
   principiante: { label: 'BEGINNER (D2)', depth: 2 },
-  amateur:      { label: 'AMATEUR (D4)',  depth: 4 },
-  experto:      { label: 'EXPERT (D6)',   depth: 6 },
+  amateur: { label: 'AMATEUR (D4)', depth: 4 },
+  experto: { label: 'EXPERT (D6)', depth: 6 },
 };
 
 // ── Toast ──────────────────────────────────────────────────
@@ -137,17 +141,17 @@ function renderBoard(estado) {
         grid.appendChild(cell);
       }
     }
-    
+
     // Add horses container
     const horsesContainer = document.createElement('div');
     horsesContainer.id = 'horses-container';
     horsesContainer.className = 'horses-container';
-    
+
     const whiteHorse = document.createElement('div');
     whiteHorse.id = 'horse-white';
     whiteHorse.className = 'cell__piece horse-piece';
     whiteHorse.innerHTML = `<div class="cell__shadow"></div><img src="${ASSET_BASE}enemy_player.png" alt="IA" class="cell__img" />`;
-    
+
     const blackHorse = document.createElement('div');
     blackHorse.id = 'horse-black';
     blackHorse.className = 'cell__piece horse-piece';
@@ -160,10 +164,10 @@ function renderBoard(estado) {
     isBoardInitialized = true;
   }
 
-  const whitePos = estado.white_pos; 
+  const whitePos = estado.white_pos;
   const blackPos = estado.black_pos;
-  const stars = estado.stars || {};      
-  const energyTiles = estado.energy_tiles || {}; 
+  const stars = estado.stars || {};
+  const energyTiles = estado.energy_tiles || {};
 
   // Update Horses positions (smooth animation)
   const wHorse = document.getElementById('horse-white');
@@ -181,7 +185,7 @@ function renderBoard(estado) {
   for (let r = 0; r < GRID; r++) {
     for (let c = 0; c < GRID; c++) {
       const cell = document.getElementById(`cell-${r}-${c}`);
-      if(!cell) continue;
+      if (!cell) continue;
 
       const key = `${r},${c}`;
       const starVal = stars[key];
@@ -199,7 +203,7 @@ function renderBoard(estado) {
       const currentItemVal = cell.dataset.itemVal || '';
       let newItemType = '';
       let newItemVal = '';
-      
+
       if (starVal !== undefined) {
         newItemType = 'snitch';
         newItemVal = starVal.toString();
@@ -207,11 +211,11 @@ function renderBoard(estado) {
         newItemType = 'potion';
         newItemVal = potionVal.toString();
       }
-      
+
       if (currentItemType !== newItemType || currentItemVal !== newItemVal) {
         cell.dataset.itemType = newItemType;
         cell.dataset.itemVal = newItemVal;
-        
+
         if (newItemType === 'snitch') {
           const glowIntensity = starVal >= 6 ? 'cell__glow--high' : (starVal >= 4 ? 'cell__glow--mid' : '');
           cell.innerHTML = `
@@ -282,18 +286,18 @@ function updateHUD(estado) {
     const r = estado.black_pos[0];
     const c = estado.black_pos[1];
     const key = `${r},${c}`;
-    
+
     if (previousState.stars && previousState.stars[key] !== undefined) {
       const val = previousState.stars[key];
       if (wp) { wp.classList.remove('dopamine-pop'); void wp.offsetWidth; wp.classList.add('dopamine-pop'); }
-      snitchSound.currentTime = 0; snitchSound.play().catch(()=>{});
+      snitchSound.currentTime = 0; snitchSound.play().catch(() => { });
       spawnFloatingText([r, c], `+${val}`, 'snitch');
     }
-    
+
     if (previousState.energy_tiles && previousState.energy_tiles[key] !== undefined) {
       const val = previousState.energy_tiles[key];
       if (we) { we.classList.remove('dopamine-pop'); void we.offsetWidth; we.classList.add('dopamine-pop'); }
-      potionSound.currentTime = 0; potionSound.play().catch(()=>{});
+      potionSound.currentTime = 0; potionSound.play().catch(() => { });
       spawnFloatingText([r, c], `+${val}`, 'potion');
     }
   }
@@ -350,7 +354,7 @@ function showGameOver(estado) {
 let currentGameState = null;
 window.debugMode = false;
 
-window.onDebugMode = function(enabled) {
+window.onDebugMode = function (enabled) {
   window.debugMode = !!enabled;
   mostrarToast(`Debug ${window.debugMode ? 'ACTIVADO' : 'DESACTIVADO'}`, 2200);
 };
@@ -495,7 +499,7 @@ window.nuevaPartida = async function () {
 
   const entrySound = new Audio(`${SOUND_BASE}entry_game.mp3`);
   entrySound.volume = 0.6;
-  entrySound.play().catch(()=>{});
+  entrySound.play().catch(() => { });
 
   isBoardInitialized = false;
   await cargarPartida();
@@ -520,14 +524,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.footer-btn').forEach(btn => {
     btn.addEventListener('mouseenter', () => {
       hoverSound.currentTime = 0;
-      hoverSound.play().catch(() => {});
+      hoverSound.play().catch(() => { });
     });
   });
 
   // Reproducir música al primer tap/click (autolay policy protection)
   document.addEventListener('click', () => {
     if (bgAudio.paused) {
-      bgAudio.play().catch(()=>{});
+      bgAudio.play().catch(() => { });
     }
   }, { once: true });
 });

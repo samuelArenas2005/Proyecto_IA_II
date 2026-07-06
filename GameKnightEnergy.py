@@ -3,73 +3,21 @@ Lógica del algoritmo Minimax, poda alfa-beta y otras utilidades.
 """
 import random
 
-def minimax_alpha_beta(game_state, depth, alpha=float("-inf"), beta=float("inf")):
+def minimax_alpha_beta(GameState,depth):
     """
     Implementación de Minimax con poda alfa-beta.
     """
-    if game_state.is_end_game():
-        return game_state.utility_function()
-
-    if depth == 0:
-        return game_state.heuristica_utility_function()
-
-    if not game_state.can_player_move(game_state.current_turn):
-        return game_state.heuristica_utility_function()
-
-    possible_states = game_state.get_gamestate_possible()
-    if not possible_states:
-        return game_state.heuristica_utility_function()
-
-    if game_state.current_turn == "white":
-        best_value = float("-inf")
-        for child_state in possible_states:
-            value = minimax_alpha_beta(child_state, depth - 1, alpha, beta)
-            best_value = max(best_value, value)
-            alpha = max(alpha, best_value)
-            if beta <= alpha:
-                break
-        return best_value
-
-    best_value = float("inf")
-    for child_state in possible_states:
-        value = minimax_alpha_beta(child_state, depth - 1, alpha, beta)
-        best_value = min(best_value, value)
-        beta = min(beta, best_value)
-        if beta <= alpha:
-            break
-    return best_value
+    pass
 
 def get_best_movement(game_state, depth):
     """
     Abstracción principal que recibe el estado actual del juego 
     y la profundidad del árbol de búsqueda, retornando el mejor movimiento calculado.
     """
-    if not hasattr(game_state, "get_valid_moves"):
-        return None
-
-    if not game_state.can_player_move(game_state.current_turn):
-        return None
-
-    valid_moves = game_state.get_valid_moves()
-    if not valid_moves:
-        return None
-
-    maximizing = game_state.current_turn == "white"
-    best_move = None
-    best_score = float("-inf") if maximizing else float("inf")
-
-    for move in valid_moves:
-        child_state = game_state.apply_move(move)
-        score = minimax_alpha_beta(child_state, depth - 1)
-
-        if maximizing and score > best_score:
-            best_score = score
-            best_move = move
-        elif not maximizing and score < best_score:
-            best_score = score
-            best_move = move
-
-    return best_move
+    if hasattr(game_state, 'get_valid_moves'):
+        valid_moves = game_state.get_valid_moves()
+        return valid_moves[0] if valid_moves else None
+    return None
 
 
 

@@ -1,4 +1,5 @@
 import eel
+import sys
 from types import SimpleNamespace
 from GameState import GameState
 from GameKnightEnergy import get_best_movement, build_random_map_state
@@ -26,6 +27,11 @@ def set_debug_mode(enabled):
     if hasattr(eel, 'onDebugMode'):
         eel.onDebugMode(debug_mode)
     return debug_mode
+
+@eel.expose
+def close_window():
+    """Cierra el proceso cuando el usuario elige salir desde el menu."""
+    sys.exit(0)
 
 @eel.expose
 def obtener_movimiento_ia(estado, profundidad):
@@ -80,5 +86,6 @@ if __name__ == "__main__":
         size=(1920, 1080),
         position=(0, 0),
         mode="chrome",
-        cmdline_args=['--autoplay-policy=no-user-gesture-required']
+        cmdline_args=['--autoplay-policy=no-user-gesture-required'],
+        shutdown_delay=5.0
     )

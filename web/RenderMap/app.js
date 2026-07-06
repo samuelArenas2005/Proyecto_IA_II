@@ -49,7 +49,7 @@ async function processAIMove() {
     return;
   }
 
-  const depth = NIVEL_MAP[currentGameState.nivel]?.depth || 2;
+  const depth = NIVEL_MAP[currentGameState.nivel]?.depth;
   mostrarToast('IA calculando movimiento...', 1800);
 
   // Ask the backend for the best move
@@ -441,8 +441,84 @@ async function onCellClick(row, col) {
 // INICIALIZACIÓN
 // ═══════════════════════════════════════════════════════════
 
+function safeReadEditorConfig() {
+  try {
+    return JSON.parse(localStorage.getItem('knight_editor_config') || '{}');
+  } catch (error) {
+    console.warn('Configuracion del editor invalida, se ignora.', error);
+    return {};
+  }
+}
+
+function getConfiguredValue(item, fallbackValue) {
+  if (typeof item === 'string') return fallbackValue;
+  const value = Number(item?.v);
+  return Number.isFinite(value) && value > 0 ? value : fallbackValue;
+}
+
+function buildEditorInitialState() {
+  const editorConfig = safeReadEditorConfig();
+
+  if (!Array.isArray(editorConfig.player) || !Array.isArray(editorConfig.opponent)) {
+    return null;
+  }
+
+  const stars = {};
+  const energy_tiles = {};
+
+  Object.entries(editorConfig.board || {}).forEach(([key, item]) => {
+    const type = typeof item === 'string' ? item : (item?.t || '');
+    if (type === 'snitch') {
+      stars[key] = getConfiguredValue(item, 5);
+    }
+    if (type === 'potion') {
+      energy_tiles[key] = getConfiguredValue(item, 3);
+    }
+  });
+
+  return {
+    board_size: 8,
+    nivel: editorConfig.level || localStorage.getItem('knight_nivel_seleccionado') || 'principiante',
+    // En GameState, white = IA/oponente y black = jugador.
+    // El editor guarda "player" y "opponent" desde la perspectiva visual.
+    white_pos: editorConfig.opponent,
+    black_pos: editorConfig.player,
+    stars,
+    energy_tiles,
+    white_energy: 7,
+    black_energy: 7,
+    white_points: 0,
+    black_points: 0,
+    current_turn: 'white',
+    game_over: false,
+    winner: null,
+    valid_moves: []
+  };
+}
+
+function startGameFromState(estado) {
+  currentGameState = estado;
+  updateHUD(currentGameState);
+  if (currentGameState.current_turn === 'white') {
+    setTimeout(async () => {
+      await processAIMove();
+    }, 1500);
+  }
+}
+
 async function cargarPartida() {
   try {
+    const gameSource = localStorage.getItem('knight_game_source');
+
+    if (gameSource === 'editor') {
+      const editorState = buildEditorInitialState();
+      if (editorState) {
+        startGameFromState(editorState);
+        return;
+      }
+      console.warn('No se pudo cargar la partida personalizada; se usara mapa aleatorio.');
+    }
+
     if (typeof eel !== 'undefined' && eel.solicitar_mapa_aleatorio) {
       const estadoMock = await eel.solicitar_mapa_aleatorio()();
       if (estadoMock) {
@@ -457,66 +533,14 @@ async function cargarPartida() {
           winner: null,
           nivel: nivelGuardado
         };
-        currentGameState = { ...defaultState, ...estadoMock };
-        updateHUD(currentGameState);
-        if (currentGameState.current_turn === 'white') {
-          setTimeout(async () => {
-            await processAIMove();
-          }, 1500);
-        }
+        startGameFromState({ ...defaultState, ...estadoMock });
         return;
       }
     }
 
-    // Fallback por si EEL no responde
-    const nivelGuardado = localStorage.getItem('knight_nivel_seleccionado') || 'principiante';
-    const editorConfig = JSON.parse(localStorage.getItem('knight_editor_config') || '{}');
-    const boardConfig = editorConfig.board || {};
-    const whitePos = editorConfig.player || [6, 1];
-    const blackPos = editorConfig.opponent || [1, 5];
-
-    const stars = {};
-    const energy_tiles = {};
-    let counterSnitch = 0;
-    let counterPotion = 0;
-
-    Object.entries(boardConfig).forEach(([key, item]) => {
-      // item can be legacy string ('snitch'|'potion') or an object {t: 'snitch'|'potion', v: number}
-      const type = typeof item === 'string' ? item : (item.t || '');
-      const val = typeof item === 'string' ? (type === 'snitch' ? 5 : (type === 'potion' ? 3 : null)) : (item.v || null);
-      if (type === 'snitch') {
-        stars[key] = val || 5;
-        counterSnitch += 1;
-      }
-      if (type === 'potion') {
-        energy_tiles[key] = val || 3;
-        counterPotion += 1;
-      }
-    });
-
-    const estadoInicial = {
-      board_size: 8,
-      nivel: nivelGuardado,
-      white_pos: whitePos,
-      black_pos: blackPos,
-      stars,
-      energy_tiles,
-      white_energy: 7,
-      black_energy: 7,
-      white_points: 0,
-      black_points: 0,
-      current_turn: 'white',
-      game_over: false,
-      winner: null,
-      valid_moves: []
-    };
-    currentGameState = estadoInicial;
-    updateHUD(currentGameState);
-    if (currentGameState.current_turn === 'white') {
-      setTimeout(async () => {
-        await processAIMove();
-      }, 1500);
-    }
+    // Fallback local para ejecutar el tablero sin Eel durante desarrollo.
+    const estadoInicial = buildEditorInitialState();
+    if (estadoInicial) startGameFromState(estadoInicial);
   } catch (e) {
     console.error('Error cargando partida:', e);
   }
@@ -544,7 +568,7 @@ window.nuevaPartida = async function () {
 
 window.irAlMenu = function () {
   document.body.classList.add('fade-out');
-  setTimeout(() => { window.location.href = '../menu.html'; }, 450);
+  setTimeout(() => { window.location.href = '/menu.html'; }, 450);
 };
 
 // ── DOM Ready ──────────────────────────────────────────────

@@ -96,6 +96,7 @@ window.seleccionarNivelYJugar = async function (nivel) {
   const root    = document.getElementById('menu-root');
   const overlay = document.getElementById('overlay');
   localStorage.setItem('knight_nivel_seleccionado', nivel);
+  localStorage.setItem('knight_game_source', 'random');
 
   const entrySound = new Audio('assets/Sounds/entry_game.mp3');
   entrySound.volume = 0.6;
@@ -170,6 +171,7 @@ window.iniciarPartidaEditor = function () {
   config.opponent = config.opponent || null;
   localStorage.setItem('knight_editor_config', JSON.stringify(config));
   localStorage.setItem('knight_nivel_seleccionado', config.level);
+  localStorage.setItem('knight_game_source', 'editor');
 
   const entrySound = new Audio('assets/Sounds/entry_game.mp3');
   entrySound.volume = 0.6;
@@ -323,11 +325,33 @@ window.cargarEditor = function () {
   });
   actualizarContadoresEditor();
   updatePaletteState();
+  updateStartButtonState();
 };
 
 // Selection-based placement (no drag)
 window.selectedEditorType = null;
 window.editorMode = 'place'; // 'place' or 'erase'
+
+function getPaletteSelect(paletteItem) {
+  return paletteItem?.querySelector('.value-select, .select-medieval') || null;
+}
+
+function getPaletteValue(paletteItem) {
+  const select = getPaletteSelect(paletteItem);
+  if (!select) return null;
+  const value = Number(select.value);
+  return Number.isFinite(value) ? value : null;
+}
+
+function updateSelectedPaletteLabel() {
+  const activePalette = document.querySelector('.palette-item.active');
+  if (!activePalette) return;
+  const type = activePalette.dataset.type;
+  const value = getPaletteValue(activePalette);
+  document.getElementById('editor-selected-label').textContent = value
+    ? `${type.toUpperCase()} (${value})`
+    : type.toUpperCase();
+}
 
 window.selectPalette = function (el) {
   document.querySelectorAll('.palette-item').forEach(p => p.classList.remove('active'));
@@ -341,10 +365,7 @@ window.selectPalette = function (el) {
   window.editorMode = 'place';
   el.classList.add('active');
   document.getElementById('editor-mode-label').textContent = 'Colocar';
-  // read value if available
-  const select = el.querySelector('.value-select');
-  const value = select ? select.value : '';
-  document.getElementById('editor-selected-label').textContent = value ? `${type.toUpperCase()} (${value})` : type.toUpperCase();
+  updateSelectedPaletteLabel();
   highlightPlaceableCells();
 };
 
@@ -386,6 +407,11 @@ window.onEditorCellClick = function (row, col, cellEl) {
   // If placing player/opponent ensure uniqueness
   const config = JSON.parse(localStorage.getItem('knight_editor_config') || '{}');
   config.board = config.board || {};
+  const targetKey = `${row},${col}`;
+  const previousItem = config.board[targetKey];
+  const previousType = typeof previousItem === 'string' ? previousItem : (previousItem?.t || '');
+  if (previousType === 'player') delete config.player;
+  if (previousType === 'opponent') delete config.opponent;
 
   if (sel === 'player' || sel === 'opponent') {
     const existingKey = Object.keys(config.board).find(k => {
@@ -398,7 +424,11 @@ window.onEditorCellClick = function (row, col, cellEl) {
       delete config.board[existingKey];
       const [r,c] = existingKey.split(',').map(Number);
       const oldCell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
-      if (oldCell) { oldCell.dataset.item = ''; oldCell.querySelector('.cell-icon')?.remove(); }
+      if (oldCell) {
+        oldCell.dataset.item = '';
+        oldCell.querySelector('.cell-icon')?.remove();
+        oldCell.querySelector('.cell-value-badge')?.remove();
+      }
     }
     if (sel === 'player') config.player = [row, col];
     if (sel === 'opponent') config.opponent = [row, col];
@@ -406,16 +436,13 @@ window.onEditorCellClick = function (row, col, cellEl) {
   // determine value for snitch/potion
   let placeValue = null;
   const activePalette = document.querySelector(`.palette-item.active`);
-  if (activePalette) {
-    const s = activePalette.querySelector('.value-select');
-    if (s) placeValue = Number(s.value);
-  }
+  if (activePalette) placeValue = getPaletteValue(activePalette);
 
   // place (store as object with type and value when applicable)
   if (sel === 'snitch' || sel === 'potion') {
-    config.board[`${row},${col}`] = { t: sel, v: placeValue || (sel==='snitch'?5:3) };
+    config.board[targetKey] = { t: sel, v: placeValue || (sel==='snitch'?5:3) };
   } else {
-    config.board[`${row},${col}`] = { t: sel };
+    config.board[targetKey] = { t: sel };
   }
   localStorage.setItem('knight_editor_config', JSON.stringify(config));
 
@@ -426,11 +453,11 @@ window.onEditorCellClick = function (row, col, cellEl) {
                 : 'assets/NewSprints/enemy_player.png';
   cellEl.dataset.item = sel;
   cellEl.querySelector('.cell-icon')?.remove();
+  cellEl.querySelector('.cell-value-badge')?.remove();
   const img = document.createElement('img'); img.className = 'cell-icon'; img.src = iconSrc; img.alt = sel;
   cellEl.appendChild(img);
   // show value badge if applicable
-  cellEl.querySelector('.cell-value-badge')?.remove();
-  const cfg = config.board[`${row},${col}`];
+  const cfg = config.board[targetKey];
   if (cfg && cfg.v) {
     const b = document.createElement('div'); b.className = 'cell-value-badge'; b.textContent = cfg.v; b.style.position='absolute'; b.style.right='6px'; b.style.bottom='6px'; b.style.background='rgba(10,10,12,0.7)'; b.style.color='#f3e8c1'; b.style.padding='2px 6px'; b.style.borderRadius='6px'; b.style.fontFamily = "'Cinzel', serif"; b.style.fontSize='0.8rem'; cellEl.appendChild(b);
   }
@@ -453,6 +480,7 @@ function clearCellAt(row, col, save = true) {
   if (wasType === 'opponent') delete config.opponent;
   cell.dataset.item = '';
   cell.querySelector('.cell-icon')?.remove();
+  cell.querySelector('.cell-value-badge')?.remove();
   if (save) localStorage.setItem('knight_editor_config', JSON.stringify(config));
   actualizarContadoresEditor();
   updatePaletteState();
@@ -464,7 +492,11 @@ window.clearAllBoard = function () {
   const config = {};
   config.board = {};
   localStorage.setItem('knight_editor_config', JSON.stringify(config));
-  cells.forEach(c => { c.dataset.item = ''; c.querySelector('.cell-icon')?.remove(); });
+  cells.forEach(c => {
+    c.dataset.item = '';
+    c.querySelector('.cell-icon')?.remove();
+    c.querySelector('.cell-value-badge')?.remove();
+  });
   actualizarContadoresEditor();
   updatePaletteState();
   updateStartButtonState();
@@ -513,7 +545,11 @@ function updatePaletteState() {
 
 function updateStartButtonState() {
   const config = JSON.parse(localStorage.getItem('knight_editor_config') || '{}');
-  const ok = !!config.player && !!config.opponent;
+  const hasSnitch = Object.values(config.board || {}).some(item => {
+    const type = typeof item === 'string' ? item : (item?.t || '');
+    return type === 'snitch';
+  });
+  const ok = !!config.player && !!config.opponent && hasSnitch;
   const btn = document.getElementById('btn-editor-start');
   if (btn) { btn.disabled = !ok; btn.classList.toggle('disabled', !ok); }
 }
@@ -524,6 +560,14 @@ window.iniciarPartidaEditor = function () {
   const config = JSON.parse(localStorage.getItem('knight_editor_config') || '{}');
   if (!config.player || !config.opponent) {
     mostrarToast('Debe colocar Jugador y Oponente antes de iniciar', 3000);
+    return;
+  }
+  const hasSnitch = Object.values(config.board || {}).some(item => {
+    const type = typeof item === 'string' ? item : (item?.t || '');
+    return type === 'snitch';
+  });
+  if (!hasSnitch) {
+    mostrarToast('Debe colocar al menos una Snitch para que la partida tenga objetivo', 3000);
     return;
   }
   // proceed (save config is already stored) and navigate
@@ -542,8 +586,17 @@ menuBgAudio.addEventListener('ended', () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   // Always start editor empty on page load (clear previous placements)
+  localStorage.setItem('knight_game_source', 'random');
   localStorage.setItem('knight_editor_config', JSON.stringify({}));
   cargarEditor();
+  document.querySelectorAll('.palette-item .select-medieval').forEach(select => {
+    select.addEventListener('click', event => event.stopPropagation());
+    select.addEventListener('change', event => {
+      const paletteItem = event.currentTarget.closest('.palette-item');
+      if (!paletteItem) return;
+      selectPalette(paletteItem);
+    });
+  });
   document.addEventListener('click', () => {
     if (menuBgAudio.paused) menuBgAudio.play().catch(() => {});
   }, { once: true });

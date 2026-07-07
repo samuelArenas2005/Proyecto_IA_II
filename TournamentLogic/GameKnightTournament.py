@@ -6,8 +6,8 @@ import random
 from types import SimpleNamespace
 
 from GameState import GameState
-from GameKnightHeuristicAI import get_best_movement_with_heuristic
-from HeuristicStrategies import list_heuristics, normalize_heuristic_name
+from .GameKnightHeuristicAI import get_best_movement_with_heuristic
+from .HeuristicStrategies import list_heuristics, normalize_heuristic_name
 
 
 def build_seeded_map_state(seed):

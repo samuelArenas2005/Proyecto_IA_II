@@ -2,7 +2,7 @@
 Minimax con poda alfa-beta parametrizado por heuristica externa.
 """
 
-from HeuristicStrategies import evaluate_state, normalize_heuristic_name
+from .HeuristicStrategies import evaluate_state, normalize_heuristic_name
 
 
 def minimax_alpha_beta_custom(game_state, depth, heuristic_name, alpha=float("-inf"), beta=float("inf")):

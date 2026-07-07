@@ -106,8 +106,12 @@ bgAudio.addEventListener('ended', () => {
 // ── Efectos de Sonido ──────────────────────────────────────
 const potionSound = new Audio(`${SOUND_BASE}energy.mp3`);
 const snitchSound = new Audio(`${SOUND_BASE}coin.mp3`);
+const victorySound = new Audio(`${SOUND_BASE}victory.mp3`);
+const loseSound = new Audio(`${SOUND_BASE}lose.mp3`);
 potionSound.volume = 0.6;
 snitchSound.volume = 0.6;
+victorySound.volume = 0.7;
+loseSound.volume = 0.7;
 
 let previousState = null;
 let resolvingForcedPass = false;
@@ -293,8 +297,8 @@ function updateHUD(estado) {
   currentGameState = estado;
 
   // Animación dopamínica y sonidos si los stats del jugador (Negro) suben tras su movimiento
-  if (previousState && estado.current_turn === 'white') {
-    // Es turno de IA, lo que significa que el jugador negro acaba de mover
+  if (previousState && previousState.current_turn === 'black') {
+    // El jugador negro acaba de mover
     const r = estado.black_pos[0];
     const c = estado.black_pos[1];
     const key = `${r},${c}`;
@@ -366,8 +370,15 @@ function showGameOver(estado) {
   if (!modal || !content) return;
 
   let resultText = 'EMPATE';
-  if (estado.winner === 'white') resultText = 'VICTORIA DE LA IA';
-  else if (estado.winner === 'black') resultText = '¡VICTORIA TUYA!';
+  if (estado.winner === 'white') {
+    resultText = 'VICTORIA DE LA IA';
+    loseSound.play().catch(() => {});
+  } else if (estado.winner === 'black') {
+    resultText = '¡VICTORIA TUYA!';
+    victorySound.play().catch(() => {});
+  } else {
+    victorySound.play().catch(() => {});
+  }
 
   title.textContent = resultText;
   content.innerHTML = `

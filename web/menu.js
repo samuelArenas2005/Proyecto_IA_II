@@ -52,13 +52,12 @@ function mostrarToast(msg, dur = 2500) {
 const playSound = new Audio('assets/Sounds/play_game.mp3');
 playSound.volume = 0.3;
 
-window.irASeleccionNivel = function () {
-  // Reproducir el sonido de presionar Play de forma sutil
+window.irAJugar = function () {
   playSound.currentTime = 0;
   playSound.play().catch(() => {});
 
-  const mainPanel  = document.getElementById('main-panel');
-  const nivelPanel = document.getElementById('nivel-panel');
+  const mainPanel = document.getElementById('main-panel');
+  const playPanel = document.getElementById('play-panel');
 
   mainPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
   mainPanel.style.opacity    = '0';
@@ -66,6 +65,46 @@ window.irASeleccionNivel = function () {
 
   setTimeout(() => {
     mainPanel.style.display   = 'none';
+    playPanel.style.display   = 'flex';
+    playPanel.offsetHeight; // force reflow
+    playPanel.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+    playPanel.style.opacity    = '1';
+    playPanel.style.transform  = 'translateY(0) scale(1)';
+  }, 420);
+};
+
+window.regresarAlMenuPrincipalDesdePlay = function () {
+  const mainPanel = document.getElementById('main-panel');
+  const playPanel = document.getElementById('play-panel');
+
+  playPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+  playPanel.style.opacity    = '0';
+  playPanel.style.transform  = 'translateY(20px) scale(0.97)';
+
+  setTimeout(() => {
+    playPanel.style.display   = 'none';
+    mainPanel.style.display   = 'flex';
+    mainPanel.offsetHeight; // force reflow
+    mainPanel.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+    mainPanel.style.opacity    = '1';
+    mainPanel.style.transform  = 'translateY(0) scale(1)';
+  }, 420);
+};
+
+window.irASeleccionNivel = function () {
+  // Reproducir el sonido de presionar Play de forma sutil
+  playSound.currentTime = 0;
+  playSound.play().catch(() => {});
+
+  const playPanel  = document.getElementById('play-panel');
+  const nivelPanel = document.getElementById('nivel-panel');
+
+  playPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+  playPanel.style.opacity    = '0';
+  playPanel.style.transform  = 'translateY(-20px) scale(0.97)';
+
+  setTimeout(() => {
+    playPanel.style.display   = 'none';
     nivelPanel.style.display  = 'flex';
     nivelPanel.offsetHeight; // force reflow
     nivelPanel.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
@@ -75,7 +114,7 @@ window.irASeleccionNivel = function () {
 };
 
 window.regresarAlMenu = function () {
-  const mainPanel  = document.getElementById('main-panel');
+  const playPanel  = document.getElementById('play-panel');
   const nivelPanel = document.getElementById('nivel-panel');
 
   nivelPanel.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
@@ -84,11 +123,11 @@ window.regresarAlMenu = function () {
 
   setTimeout(() => {
     nivelPanel.style.display  = 'none';
-    mainPanel.style.display   = 'flex';
-    mainPanel.offsetHeight; // force reflow
-    mainPanel.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
-    mainPanel.style.opacity    = '1';
-    mainPanel.style.transform  = 'translateY(0) scale(1)';
+    playPanel.style.display   = 'flex';
+    playPanel.offsetHeight; // force reflow
+    playPanel.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+    playPanel.style.opacity    = '1';
+    playPanel.style.transform  = 'translateY(0) scale(1)';
   }, 420);
 };
 

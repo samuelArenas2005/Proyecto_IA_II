@@ -3,9 +3,9 @@ import sys
 from types import SimpleNamespace
 from GameState import GameState
 from GameKnightEnergy import get_best_movement, build_random_map_state
-from GameKnightHeuristicAI import get_best_movement_with_heuristic
-from GameKnightTournament import play_tournament_round, run_tournament
-from HeuristicStrategies import list_heuristics
+from TournamentLogic.GameKnightHeuristicAI import get_best_movement_with_heuristic
+from TournamentLogic.GameKnightTournament import play_tournament_round, run_tournament
+from TournamentLogic.HeuristicStrategies import list_heuristics
 
 eel.init("web")
 

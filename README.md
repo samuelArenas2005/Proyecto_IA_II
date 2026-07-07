@@ -1,4 +1,4 @@
-﻿# Knight Energy - Juego con IA Minimax en tablero 8x8
+# Knight Energy - Juego con IA Minimax en tablero 8x8
 
 Knight Energy es un juego de estrategia entre dos adversarios sobre un tablero de ajedrez 8x8. Cada jugador controla un caballo, acumula puntos, consume energía al moverse y compite contra una inteligencia artificial basada en Minimax con poda alfa-beta.
 
@@ -174,6 +174,13 @@ Por eso, al cargar una partida personalizada:
   - casillas de energía.
 - Asigna valores de puntos y energía a coordenadas del tablero.
 
+### `TournamentLogic/` (Directorio)
+
+- Contiene la lógica, heurísticas y algoritmos específicos para ejecutar torneos automáticos entre múltiples configuraciones de la inteligencia artificial.
+  - `GameKnightTournament.py`: Orquesta rondas y torneos completos entre IAs, gestiona posiciones iniciales (seeds) para competencia justa, simula partidas y extrae ganadores por puntos y victorias.
+  - `GameKnightHeuristicAI.py`: Versión de la IA (Minimax alfa-beta) parametrizada para utilizar diferentes esquemas de evaluación en lugar de uno fijo.
+  - `HeuristicStrategies.py`: Define un diccionario con distintas "personalidades" heurísticas (ej. *Cazadora de estrellas*, *Defensiva*, *Agresiva*), asignando pesos matemáticos específicos a diferentes factores del estado del juego (energía, control central, opciones futuras).
+
 ### `requirements.txt`
 
 - Lista las dependencias Python del proyecto.
@@ -192,16 +199,16 @@ La carpeta `web` contiene toda la interfaz gráfica del juego.
 
 - Página principal del juego.
 - Contiene:
-  - menú principal;
-  - selección de dificultad;
-  - acceso al Game Editor;
+  - menú principal con acceso directo a Jugar, Torneo y Game Editor;
+  - panel o submenú de "Jugar" (Humano vs IA, IA vs IA, Jugador vs Jugador);
+  - panel de selección de dificultad;
   - botón de salida;
   - estructura visual del editor.
 
 ### `web/menu.js`
 
 - Controla la lógica del menú principal.
-- Maneja transiciones entre paneles.
+- Maneja animaciones y transiciones fluidas entre los distintos paneles (Main Menu, Play Panel, Dificultad, Editor).
 - Guarda dificultad seleccionada.
 - Controla el Game Editor:
   - selección de elementos;
@@ -211,6 +218,13 @@ La carpeta `web` contiene toda la interfaz gráfica del juego.
   - generación aleatoria desde el editor;
   - validaciones antes de iniciar una partida personalizada.
 - Guarda la configuración personalizada en `localStorage`.
+
+### `web/Tournament/`, `web/HumanVsHuman/`, `web/AIVsAI/`
+
+- Almacenan las configuraciones de la interfaz y la lógica específica de cada modalidad:
+  - **Tournament**: Menú interactivo para iniciar un torneo de heurísticas eligiendo número de participantes y evaluando automáticamente cada enfrentamiento en el backend, mostrando el progreso de las rondas en pantalla. Sus estilos (`tournament.css`) están ajustados para evitar desbordes visuales del título de la interfaz.
+  - **HumanVsHuman**: Vista de tablero adaptada para una pugna en dispositivo local de dos jugadores interactuando en turnos.
+  - **AIVsAI**: Espectador de una partida generada enteramente por simulaciones heurísticas enviadas desde el backend.
 
 ### `web/RenderMap/index.html`
 

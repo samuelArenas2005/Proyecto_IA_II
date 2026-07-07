@@ -4,121 +4,258 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Knight Energy – Menú Principal</title>
-  <meta name="description" content="Juego de caballos sobre tablero de ajedrez con inteligencia artificial." />
+  <meta name="description" content="Juego de caballos con inteligencia artificial estilo medieval." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;900&family=MedievalSharp&display=swap" rel="stylesheet" />
+  <!-- Font Awesome for icon buttons -->
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
   <link rel="stylesheet" href="menu.css" />
-
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.min.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
-    }
-  }
-  </script>
 </head>
 <body>
 
-  <div id="bg-canvas"></div>
+  <!-- Fondo de imagen completa -->
+  <div id="bg-image"></div>
   <div id="overlay"></div>
+
+  <!-- Partículas decorativas -->
+  <div id="particles"></div>
 
   <main id="menu-root">
 
-    <!-- Panel de selección de dificultad -->
-    <div id="nivel-panel" class="menu-panel" style="display: none; opacity: 0;">
-      <div class="brand-tag">Knight Energy</div>
-      <h1 class="brand-title">Nivel de<br>Dificultad</h1>
-      <p class="brand-sub">La IA usa minimax con distinta profundidad</p>
-
-      <div class="menu-sep"></div>
-
-      <nav class="menu-buttons" aria-label="Selección de dificultad">
-        <button id="btn-principiante" class="menu-btn menu-btn--active"
-                onclick="seleccionarNivelYJugar('principiante')" title="Profundidad 2">
-          <span class="menu-btn__icon"><i class="fa-solid fa-seedling"></i></span>
-          <span class="menu-btn__label">Principiante</span>
-          <span class="menu-btn__badge">Prof. 2</span>
-        </button>
-
-        <button id="btn-amateur" class="menu-btn menu-btn--active"
-                onclick="seleccionarNivelYJugar('amateur')" title="Profundidad 4">
-          <span class="menu-btn__icon"><i class="fa-solid fa-chess-knight"></i></span>
-          <span class="menu-btn__label">Amateur</span>
-          <span class="menu-btn__badge">Prof. 4</span>
-        </button>
-
-        <button id="btn-experto" class="menu-btn menu-btn--active"
-                onclick="seleccionarNivelYJugar('experto')" title="Profundidad 6">
-          <span class="menu-btn__icon"><i class="fa-solid fa-crown"></i></span>
-          <span class="menu-btn__label">Experto</span>
-          <span class="menu-btn__badge">Prof. 6</span>
-        </button>
-
-        <div class="menu-sep" style="margin: 10px 0;"></div>
-
-        <button class="menu-btn menu-btn--return" onclick="regresarAlMenu()" title="Volver">
-          <span class="menu-btn__icon"><i class="fa-solid fa-arrow-left"></i></span>
-          <span class="menu-btn__label">Regresar</span>
-        </button>
-      </nav>
-    </div>
-
-    <!-- Panel principal -->
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- PANEL PRINCIPAL -->
+    <!-- ═══════════════════════════════════════════ -->
     <div class="menu-panel" id="main-panel">
-      <div class="brand-tag">Inteligencia Artificial</div>
-      <h1 class="brand-title">Knight<br>Energy</h1>
-      <p class="brand-sub">Caballos, estrellas y rayos sobre el tablero</p>
 
-      <div class="menu-sep"></div>
+      <h1 class="brand-title">KNIGHT ENERGY</h1>
+
+      <!-- Snitch dorada decorativa -->
+      <div class="snitch-container">
+        <img src="assets/NewSprints/snitch_dorada.png" alt="Snitch Dorada" class="snitch-img" />
+      </div>
 
       <nav class="menu-buttons" aria-label="Menú principal">
-        <button id="btn-inicio" class="menu-btn menu-btn--active"
-                onclick="irASeleccionNivel()" title="Iniciar partida">
-          <span class="menu-btn__icon"><i class="fa-solid fa-play"></i></span>
-          <span class="menu-btn__label">Jugar</span>
-          <span class="menu-btn__badge">Disponible</span>
+
+        <!-- HUMANO VS IA -->
+        <button id="btn-inicio" class="menu-btn" onclick="irASeleccionNivel()" title="Modo normal humano vs IA">
+          <span class="menu-btn__label">HUMANO VS IA</span>
         </button>
 
-        <button class="menu-btn menu-btn--disabled" disabled title="Próximamente">
-          <span class="menu-btn__icon"><i class="fa-solid fa-book"></i></span>
-          <span class="menu-btn__label">Reglas</span>
-          <span class="menu-btn__badge">Próximamente</span>
+        <!-- HUMANO VS HUMANO -->
+        <button id="btn-human-vs-human" class="menu-btn" onclick="irAHumanoVsHumano()" title="Modo humano vs humano">
+          <span class="menu-btn__label">HUMANO VS HUMANO</span>
+          <img src="assets/NewSprints/player.png" alt="" class="menu-btn__icon-img" />
         </button>
+
+        <!-- IA VS IA -->
+        <button id="btn-ai-vs-ai" class="menu-btn" onclick="irAIAVsIA()" title="Modo IA vs IA">
+          <span class="menu-btn__label">IA VS IA</span>
+          <img src="assets/NewSprints/enemy_player.png" alt="" class="menu-btn__icon-img" />
+        </button>
+
+        <!-- TORNEO -->
+        <button id="btn-tournament" class="menu-btn" onclick="irATorneoHeuristicas()" title="Torneo de heurísticas">
+          <span class="menu-btn__label">TORNEO HEURÍSTICAS</span>
+          <img src="assets/NewSprints/icon_map.png" alt="" class="menu-btn__icon-img" />
+        </button>
+
+        <!-- GAME EDITOR -->
+        <button id="btn-game-editor" class="menu-btn" onclick="irAEditor()" title="Game Editor">
+          <span class="menu-btn__label">GAME EDITOR</span>
+          <img src="assets/NewSprints/setting.png" alt="" class="menu-btn__icon-img" />
+        </button>
+
+        <!-- EXIT -->
+        <button id="btn-exit" class="menu-btn menu-btn--exit" onclick="exitGame()" title="Salir del juego">
+          <span class="menu-btn__label">EXIT</span>
+        </button>
+
       </nav>
 
-      <div class="session-card">
-        <div class="session-card__item">
-          <span class="session-card__icon"><i class="fa-solid fa-robot"></i></span>
-          <div class="session-card__info">
-            <span class="session-card__label">IA (Blanco)</span>
-            <span class="session-card__value">Minimax</span>
+      <footer class="menu-footer">
+        <span>Version 1.0 (Prototype) | © Knight Energy Games</span>
+      </footer>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- PANEL DE SELECCIÓN DE DIFICULTAD -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="nivel-panel" class="menu-panel" style="display: none; opacity: 0;">
+
+      <h1 class="brand-title">KNIGHT ENERGY</h1>
+      <h2 class="brand-subtitle">SELECCIONAR DIFICULTAD</h2>
+
+      <!-- Snitch dorada decorativa -->
+      <div class="snitch-container">
+        <img src="assets/NewSprints/snitch_dorada.png" alt="Snitch Dorada" class="snitch-img" />
+      </div>
+
+      <nav class="menu-buttons" aria-label="Selección de dificultad">
+
+        <!-- PRINCIPIANTE - Depth 2 -->
+        <div class="difficulty-btn-wrapper">
+          <img src="assets/NewSprints/depth_2.png"   alt="Depth 2"   class="diff-side diff-side--left" />
+          <button id="btn-principiante" class="menu-btn menu-btn--difficulty" onclick="seleccionarNivelYJugar('principiante')" title="Profundidad 2">
+            <span class="menu-btn__label">PRINCIPIANTE</span>
+          </button>
+          <img src="assets/NewSprints/warrior_1.png" alt="Warrior 1" style="scale: 0.65; transform: translateY(-80%);" class="diff-side diff-side--right" />
+        </div>
+
+        <!-- AMATEUR - Depth 4 -->
+        <div class="difficulty-btn-wrapper">
+          <img src="assets/NewSprints/depth_4.png"   alt="Depth 4"   class="diff-side diff-side--left" />
+          <button id="btn-amateur" class="menu-btn menu-btn--difficulty" onclick="seleccionarNivelYJugar('amateur')" title="Profundidad 4">
+            <span class="menu-btn__label">AMATEUR</span>
+          </button>
+          <img src="assets/NewSprints/warrior_2.png" alt="Warrior 2" style="scale: 0.7; transform: translateY(-70%);" class="diff-side diff-side--right" />
+        </div>
+
+        <!-- EXPERTO - Depth 6 -->
+        <div class="difficulty-btn-wrapper">
+          <img src="assets/NewSprints/depth_6.png"   alt="Depth 6"   class="diff-side diff-side--left" />
+          <button id="btn-experto" class="menu-btn menu-btn--difficulty" onclick="seleccionarNivelYJugar('experto')" title="Profundidad 6">
+            <span class="menu-btn__label">EXPERTO</span>
+          </button>
+          <img src="assets/NewSprints/warrior_3.png" alt="Warrior 3" class="diff-side diff-side--right" />
+        </div>
+
+        <!-- REGRESAR -->
+        <button id="btn-regresar" class="menu-btn menu-btn--back" onclick="regresarAlMenu()" title="Volver al menú">
+          <span class="menu-btn__label">REGRESAR</span>
+        </button>
+
+      </nav>
+
+      <footer class="menu-footer">
+        <span>© Knight Energy Games</span>
+      </footer>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- PANEL DE EDITOR -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="editor-panel" class="menu-panel editor-layout" style="display: none; opacity: 0;">
+
+      <div class="editor-header">
+        <h1 class="brand-subtitle editor-title">KNIGHT ENERGY - EDITOR DE JUEGO</h1>
+      </div>
+
+      <div class="editor-main">
+        <!-- Left Column -->
+        <div class="editor-left">
+          <div class="editor-section">
+            <h3 class="editor-section-title">CONFIGURACIÓN DE PARTIDA</h3>
+            
+            <div class="editor-config-row">
+              <span class="editor-label">Dificultad:</span>
+              <div class="editor-diff-buttons" id="editor-diff-buttons">
+                <button class="ed-diff-btn active" data-diff="principiante" onclick="seleccionarDificultadEditor(this)">PRINCIPIANTE</button>
+                <button class="ed-diff-btn" data-diff="amateur" onclick="seleccionarDificultadEditor(this)">AMATEUR</button>
+                <button class="ed-diff-btn" data-diff="experto" onclick="seleccionarDificultadEditor(this)">EXPERTO</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px;">
+              <div class="editor-diff-depth" id="editor-diff-depth">Depth 2</div>
+              <div class="editor-mini-actions" style="display:flex;gap:8px;align-items:center;">
+                <button class="mini-icon" title="Eliminar todo" onclick="clearAllBoard()" aria-label="Eliminar todo"><i class="fas fa-trash"></i></button>
+                <button class="mini-icon" title="Aleatorio" onclick="randomizeBoard()" aria-label="Aleatorio"><i class="fas fa-dice"></i></button>
+                <button class="mini-icon" title="Modo eliminar" onclick="setEraseMode()" aria-label="Modo eliminar"><i class="fas fa-eraser"></i></button>
+                <div style="font-size:0.85rem;color:#d6c389;margin-left:6px;">Acciones rápidas</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="editor-board-container">
+            <div class="editor-board" id="editor-board">
+              <!-- cuadricula sin imagen, generada por JS -->
+            </div>
           </div>
         </div>
-        <div class="session-card__divider"></div>
-        <div class="session-card__item">
-          <span class="session-card__icon"><i class="fa-solid fa-user"></i></span>
-          <div class="session-card__info">
-            <span class="session-card__label">Tú (Negro)</span>
-            <span class="session-card__value">Caballo</span>
+
+        <!-- Right Column -->
+        <div class="editor-right">
+          <div class="editor-section">
+            <h3 class="editor-section-title">PALETA DE ELEMENTOS</h3>
+            <p class="editor-instruction">Selecciona un elemento y haz clic en la cuadrícula</p>
+            
+            <div class="editor-palette">
+              <button type="button" class="palette-item" onclick="selectPalette(this)" data-type="snitch">
+                <img src="assets/NewSprints/snitch_dorada.png" alt="Snitch" />
+                <span>PUNTOS:</span>
+                <div class="select-container">
+                  <select class="select-medieval" aria-label="Valor snitch">
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5" selected>5</option>
+                  <option value="6">6</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  </select>
+                </div>
+              </button>
+              <button type="button" class="palette-item" onclick="selectPalette(this)" data-type="potion">
+                <img src="assets/NewSprints/energy_potion.png" alt="Potion" />
+                <span>ENERGÍA:</span>
+                <div class="select-container">
+                    <select class="select-medieval" aria-label="Valor pocion">
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                 </div>
+              </button>
+              <button type="button" class="palette-item" onclick="selectPalette(this)" data-type="player" id="palette-player">
+                <img src="assets/NewSprints/player.png" alt="Player" />
+                <span>JUGADOR</span>
+              </button>
+              <button type="button" class="palette-item" onclick="selectPalette(this)" data-type="opponent" id="palette-opponent">
+                <img src="assets/NewSprints/enemy_player.png" alt="Enemy" />
+                <span>OPONENTE</span>
+              </button>
+            </div>
+
+            <div class="editor-stats">
+              <div><span>Snitches colocadas:</span> <strong id="snitch-count">0</strong></div>
+              <div><span>Pociones colocadas:</span> <strong id="potion-count">0</strong></div>
+              <div><span>Jugador:</span> <strong id="player-count">0/1</strong></div>
+              <div><span>Oponente:</span> <strong id="opponent-count">0/1</strong></div>
+            </div>
+          </div>
+
+          <div class="editor-actions">
+            <div class="editor-mode">
+              <span>Modo:</span>
+              <strong id="editor-mode-label">Colocar</strong>
+              <span style="margin-left:8px;">Seleccionado:</span>
+              <strong id="editor-selected-label">Ninguno</strong>
+            </div>
+            <!-- INICIAR PARTIDA -->
+            <button id="btn-editor-start" class="menu-btn" onclick="iniciarPartidaEditor()" title="Iniciar">
+              <span class="menu-btn__label">INICIAR PARTIDA</span>
+            </button>
+            <button id="btn-editor-back" class="menu-btn menu-btn--back" style="max-width:none" onclick="regresarAlMenuDesdeEditor()" title="Regresar">
+              <span class="menu-btn__label">REGRESAR AL MENÚ</span>
+            </button>
           </div>
         </div>
       </div>
     </div>
+
   </main>
 
-  <div class="authors-tag">
-    Samuel Arenas Valencia 202341928-3743<br>
-    María Juliana Saavedra 2023-3743<br>
-    Alejandro Libardo Quintero 2023-3743<br>
-    Juan David Rincón 202332032-3743
-  </div>
-  <div class="version-tag">Knight Energy v1.0</div>
+  <!-- Sparkle decorativo esquina inferior derecha -->
+  <div class="sparkle-corner" aria-hidden="true">✦</div>
 
   <script src="/eel.js" onerror="console.warn('eel.js no disponible')"></script>
   <script src="api.js"></script>
-  <script type="module" src="menu.js"></script>
+  <script src="menu.js"></script>
 </body>
 </html>

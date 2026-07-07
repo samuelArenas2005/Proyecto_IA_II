@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knight Energy - Torneo de heuristicas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../menu.css" />
+  <link rel="stylesheet" href="tournament.css" />
+</head>
+<body>
+  <div id="bg-image"></div>
+  <div id="overlay"></div>
+  <div id="particles"></div>
+
+  <main id="menu-root" class="tournament-root">
+    <section class="tournament-shell">
+      <header class="tournament-header">
+        <h1 class="brand-title">KNIGHT ENERGY</h1>
+        <h2 class="brand-subtitle">TORNEO DE HEURISTICAS</h2>
+      </header>
+
+      <div class="tournament-grid">
+        <section class="tournament-panel tournament-panel--setup">
+          <h3 class="editor-section-title">CONFIGURACION</h3>
+          <div class="tournament-controls">
+            <label>
+              Participantes
+              <select id="participant-count" class="tournament-select">
+                <option value="2">2</option>
+                <option value="4" selected>4</option>
+                <option value="8">8</option>
+                <option value="16">16</option>
+              </select>
+            </label>
+            <label>
+              Profundidad
+              <select id="tournament-depth" class="tournament-select">
+                <option value="2" selected>2</option>
+                <option value="4">4</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="heuristic-list" id="heuristic-list"></div>
+
+          <div class="tournament-actions">
+            <button class="menu-btn" id="btn-run-tournament"><span class="menu-btn__label">INICIAR TORNEO</span></button>
+            <button class="menu-btn menu-btn--back" onclick="irAlMenu()"><span class="menu-btn__label">REGRESAR</span></button>
+          </div>
+        </section>
+
+        <section class="tournament-panel tournament-panel--results">
+          <h3 class="editor-section-title">RESULTADOS</h3>
+          <div class="champion-box" id="champion-box">Selecciona heuristicas para iniciar.</div>
+          <div class="rounds" id="rounds"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="menu-toast"></div>
+
+  <script src="/eel.js" onerror="console.warn('eel.js no disponible')"></script>
+  <script src="tournament.js"></script>
+</body>
+</html>

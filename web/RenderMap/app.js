@@ -1,5 +1,125 @@
 'use strict';
+/* ═══════════════════════════════════════════════════════════════
+   app.js — Knight Energy · Game Board Logic & Rendering
+   Genera el tablero HTML, gestiona HUD, sonidos y navegación
+═══════════════════════════════════════════════════════════════ */
 
+const GRID = 8;
+const ASSET_BASE = '../assets/NewSprints/';
+const SOUND_BASE = '../assets/Sounds/';
+const GAME_OVER_DELAY_MS = 450;
+
+function getLegalMoves(estado, turn = estado.current_turn || 'black') {
+  const whitePos = estado.white_pos || [0, 0];
+  const blackPos = estado.black_pos || [0, 0];
+  const energy = turn === 'white' ? estado.white_energy : estado.black_energy;
+  if (typeof energy !== 'number' || energy < 1) {
+    return [];
+  }
+
+  const source = turn === 'white' ? whitePos : blackPos;
+  const moves = [
+    [source[0] + 2, source[1] + 1], [source[0] + 2, source[1] - 1],
+    [source[0] - 2, source[1] + 1], [source[0] - 2, source[1] - 1],
+    [source[0] + 1, source[1] + 2], [source[0] + 1, source[1] - 2],
+    [source[0] - 1, source[1] + 2], [source[0] - 1, source[1] - 2]
+  ];
+
+  return moves.filter(([r, c]) => {
+    if (r < 0 || r >= GRID || c < 0 || c >= GRID) return false;
+    if (r === whitePos[0] && c === whitePos[1]) return false;
+    if (r === blackPos[0] && c === blackPos[1]) return false;
+    return true;
+  });
+}
+
+function cloneState(estado) {
+  return JSON.parse(JSON.stringify(estado));
+}
+
+function isSameMove(moveA, moveB) {
+  return Array.isArray(moveA) && Array.isArray(moveB) && moveA[0] === moveB[0] && moveA[1] === moveB[1];
+}
+
+function showGameOverAfterMove(estado) {
+  setTimeout(() => { showGameOver(estado); }, GAME_OVER_DELAY_MS);
+}
+async function processAIMove() {
+  if (!currentGameState || currentGameState.game_over || currentGameState.current_turn !== 'white') {
+    return;
+  }
+
+  const depth = NIVEL_MAP[currentGameState.nivel]?.depth ?? 2;
+  mostrarToast('IA calculando movimiento...', 1800);
+
+  // Ask the backend for the best move
+  const response = await eel.obtener_movimiento_ia(currentGameState, depth)();
+  const movimiento = response?.movimiento || null;
+
+  if (!movimiento || !Array.isArray(movimiento)) {
+    const nextState = await eel.aplicar_movimiento(currentGameState, null)();
+    if (!nextState) return;
+    currentGameState = nextState;
+    mostrarToast('IA pierde turno (-3 pts).', 1800);
+    updateHUD(currentGameState);
+    if (currentGameState.game_over) {
+      showGameOverAfterMove(currentGameState);
+    }
+    return;
+  }
+
+  // Delegate the state transition entirely to the backend
+  const nextState = await eel.aplicar_movimiento(currentGameState, movimiento)();
+  if (!nextState) return;
+
+  currentGameState = nextState;
+  mostrarToast(`IA movió a (${movimiento[0]}, ${movimiento[1]})`, 1500);
+  updateHUD(currentGameState);
+
+  if (currentGameState.game_over) {
+    showGameOverAfterMove(currentGameState);
+    return;
+  }
+
+  if (currentGameState.current_turn === 'white') {
+    setTimeout(() => { processAIMove(); }, 600);
+  }
+}
+
+
+// ── Sonido hover para botones ──────────────────────────────
+const hoverSound = new Audio(`${SOUND_BASE}select_menu_sound.mp3`);
+hoverSound.preload = 'auto';
+hoverSound.volume = 0.35;
+
+// ── Música de fondo ────────────────────────────────────────
+const bgTracks = [`${SOUND_BASE}bg_1.mp3`, `${SOUND_BASE}bg_2.mp3`, `${SOUND_BASE}bg_3.mp3`];
+let currentBgTrack = 0;
+const bgAudio = new Audio(bgTracks[0]);
+bgAudio.volume = 0.10; // Volumen sutil
+bgAudio.addEventListener('ended', () => {
+  currentBgTrack = (currentBgTrack + 1) % bgTracks.length;
+  bgAudio.src = bgTracks[currentBgTrack];
+  bgAudio.play().catch(() => { });
+});
+
+// ── Efectos de Sonido ──────────────────────────────────────
+const potionSound = new Audio(`${SOUND_BASE}energy.mp3`);
+const snitchSound = new Audio(`${SOUND_BASE}coin.mp3`);
+potionSound.volume = 0.6;
+snitchSound.volume = 0.6;
+
+let previousState = null;
+let resolvingForcedPass = false;
+
+// ── Niveles ────────────────────────────────────────────────
+const NIVEL_MAP = {
+  principiante: { label: 'BEGINNER (D2)', depth: 2 },
+  amateur: { label: 'AMATEUR (D4)', depth: 4 },
+  experto: { label: 'EXPERT (D6)', depth: 6 },
+};
+
+// ── Toast ──────────────────────────────────────────────────
 function mostrarToast(msg, dur = 3000) {
   const t = document.getElementById('toast');
   document.getElementById('toast-msg').textContent = msg;
@@ -7,97 +127,237 @@ function mostrarToast(msg, dur = 3000) {
   clearTimeout(t._t);
   t._t = setTimeout(() => t.classList.remove('show'), dur);
 }
+window.mostrarToast = mostrarToast;
 
-let _lightMode = false;
-window.toggleTheme = function () {
-  _lightMode = !_lightMode;
-  document.body.classList.toggle('light', _lightMode);
-  const icon = document.getElementById('icon-theme');
-  if (icon) icon.className = _lightMode ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
-  window.setMapTheme?.(_lightMode);
-};
+// ═══════════════════════════════════════════════════════════
+// RENDERIZADO DEL TABLERO (HTML GRID)
+// ═══════════════════════════════════════════════════════════
 
-window._FA = { SUN: 'fa-solid fa-sun', MOON: 'fa-solid fa-moon' };
+let isBoardInitialized = false;
 
-const NIVEL_LABELS = {
-  principiante: 'Principiante · Minimax prof. 2',
-  amateur: 'Amateur · Minimax prof. 4',
-  experto: 'Experto · Minimax prof. 6',
-};
+function renderBoard(estado) {
+  const grid = document.getElementById('board-grid');
+  if (!grid) return;
 
-const MAX_POINTS = 37;
-const MAX_ENERGY = 15;
-const INITIAL_SNITCHES = 7;
-const INITIAL_POTIONS = 4;
+  if (!isBoardInitialized) {
+    grid.innerHTML = '';
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.id = `cell-${r}-${c}`;
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        cell.style.animationDelay = `${Math.random() * 0.4}s`;
+        cell.classList.add('cell--animate-entry');
+        grid.appendChild(cell);
+      }
+    }
 
-function setBar(id, value, max) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const pct = Math.min(100, Math.max(0, (value / max) * 100));
-  el.style.width = `${pct}%`;
+    // Add horses container
+    const horsesContainer = document.createElement('div');
+    horsesContainer.id = 'horses-container';
+    horsesContainer.className = 'horses-container';
+
+    const whiteHorse = document.createElement('div');
+    whiteHorse.id = 'horse-white';
+    whiteHorse.className = 'cell__piece horse-piece';
+    whiteHorse.innerHTML = `<div class="cell__shadow"></div><img src="${ASSET_BASE}enemy_player.png" alt="IA" class="cell__img" />`;
+
+    const blackHorse = document.createElement('div');
+    blackHorse.id = 'horse-black';
+    blackHorse.className = 'cell__piece horse-piece';
+    blackHorse.innerHTML = `<div class="cell__shadow"></div><img src="${ASSET_BASE}player.png" alt="Jugador" class="cell__img" />`;
+
+    horsesContainer.appendChild(whiteHorse);
+    horsesContainer.appendChild(blackHorse);
+    grid.appendChild(horsesContainer);
+
+    isBoardInitialized = true;
+  }
+
+  const whitePos = estado.white_pos;
+  const blackPos = estado.black_pos;
+  const stars = estado.stars || {};
+  const energyTiles = estado.energy_tiles || {};
+
+  // Update Horses positions (smooth animation)
+  const wHorse = document.getElementById('horse-white');
+  const bHorse = document.getElementById('horse-black');
+  if (wHorse) {
+    wHorse.style.top = `${whitePos[0] * 12.5}%`;
+    wHorse.style.left = `${whitePos[1] * 12.5}%`;
+  }
+  if (bHorse) {
+    bHorse.style.top = `${blackPos[0] * 12.5}%`;
+    bHorse.style.left = `${blackPos[1] * 12.5}%`;
+  }
+
+  // Update Cells content directly to avoid flashes
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      const cell = document.getElementById(`cell-${r}-${c}`);
+      if (!cell) continue;
+
+      const key = `${r},${c}`;
+      const starVal = stars[key];
+      const potionVal = energyTiles[key];
+      const legalMoves = estado.current_turn === 'black' ? getLegalMoves(estado, 'black') : [];
+      const isValid = legalMoves.some(move => move[0] === r && move[1] === c);
+      const isOccupied = (r === whitePos[0] && c === whitePos[1]) || (r === blackPos[0] && c === blackPos[1]);
+
+      cell.className = 'cell'; // reset classes keeping DOM intact
+      cell.onclick = (!isOccupied && isValid) ? () => onCellClick(r, c) : null;
+      if (isValid) {
+        cell.classList.add('cell--valid');
+      }
+      const currentItemType = cell.dataset.itemType || '';
+      const currentItemVal = cell.dataset.itemVal || '';
+      let newItemType = '';
+      let newItemVal = '';
+
+      if (starVal !== undefined) {
+        newItemType = 'snitch';
+        newItemVal = starVal.toString();
+      } else if (potionVal !== undefined) {
+        newItemType = 'potion';
+        newItemVal = potionVal.toString();
+      }
+
+      if (currentItemType !== newItemType || currentItemVal !== newItemVal) {
+        cell.dataset.itemType = newItemType;
+        cell.dataset.itemVal = newItemVal;
+
+        if (newItemType === 'snitch') {
+          const glowIntensity = starVal >= 6 ? 'cell__glow--high' : (starVal >= 4 ? 'cell__glow--mid' : '');
+          cell.innerHTML = `
+            <div class="item-container" style="width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;">
+              <div class="cell__glow cell__glow--snitch ${glowIntensity}"></div>
+              <img src="${ASSET_BASE}snitch_dorada.png" alt="Snitch" class="cell__img cell__img--snitch" />
+              <span class="cell__value">${starVal}</span>
+            </div>`;
+        } else if (newItemType === 'potion') {
+          const glowIntensity = potionVal >= 4 ? 'cell__glow--high' : (potionVal >= 3 ? 'cell__glow--mid' : '');
+          cell.innerHTML = `
+            <div class="item-container" style="width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;">
+              <div class="cell__glow cell__glow--potion ${glowIntensity}"></div>
+              <img src="${ASSET_BASE}energy_potion.png" alt="Potion" class="cell__img cell__img--potion" />
+              <span class="cell__value">${potionVal}</span>
+            </div>`;
+        } else {
+          cell.innerHTML = '';
+        }
+      }
+    }
+  }
 }
+
+// ═══════════════════════════════════════════════════════════
+// HUD UPDATE
+// ═══════════════════════════════════════════════════════════
 
 function updateHUD(estado) {
   if (!estado) return;
 
-  document.getElementById('white-points').textContent = estado.white_points;
-  document.getElementById('white-energy').textContent = estado.white_energy;
-  document.getElementById('black-points').textContent = estado.black_points;
-  document.getElementById('black-energy').textContent = estado.black_energy;
+  // Puntos y energía
+  const we = document.getElementById('white-energy');
+  const wp = document.getElementById('white-points');
+  const be = document.getElementById('black-energy');
+  const bp = document.getElementById('black-points');
 
-  setBar('white-points-bar', estado.white_points, MAX_POINTS);
-  setBar('black-points-bar', estado.black_points, MAX_POINTS);
-  setBar('white-energy-bar', estado.white_energy, MAX_ENERGY);
-  setBar('black-energy-bar', estado.black_energy, MAX_ENERGY);
+  // El panel izquierdo en la UI es el jugador negro, el derecho es la IA blanca.
+  if (we) we.textContent = estado.black_energy;
+  if (wp) wp.textContent = estado.black_points;
+  if (be) be.textContent = estado.white_energy;
+  if (bp) bp.textContent = estado.white_points;
 
-  const nivelEl = document.getElementById('nav-nivel-title');
-  if (nivelEl) nivelEl.textContent = NIVEL_LABELS[estado.nivel] || estado.nivel;
-
-  const turnEl = document.getElementById('nav-turn-title');
-  if (turnEl) {
-    if (estado.game_over) turnEl.textContent = 'Partida terminada';
-    else turnEl.textContent = estado.current_turn === 'white' ? 'Turno: IA' : 'Turno: Tú';
+  // Turnos
+  const turnLabel = document.getElementById('turn-label');
+  if (turnLabel) {
+    if (estado.game_over) {
+      turnLabel.textContent = 'PARTIDA TERMINADA';
+    } else if (estado.current_turn) {
+      turnLabel.textContent = estado.current_turn === 'white' ? 'TURNO IA' : 'TURNO JUGADOR';
+    } else {
+      turnLabel.textContent = 'TURNO JUGADOR';
+    }
   }
 
-  const statusEl = document.getElementById('game-status');
-  if (statusEl) {
-    const stars = Object.keys(estado.stars || {}).length;
-    const potions = Object.keys(estado.energy_tiles || {}).length;
-    const starsPct = (stars / INITIAL_SNITCHES) * 100;
-    const potionsPct = (potions / INITIAL_POTIONS) * 100;
+  // Dificultad
+  const diffLabel = document.getElementById('difficulty-label');
+  if (diffLabel && estado.nivel) {
+    const info = NIVEL_MAP[estado.nivel] || { label: estado.nivel.toUpperCase() };
+    diffLabel.textContent = `DIFFICULTY: ${info.label}`;
+  }
 
-    let turnoTexto = 'Esperando...';
-    if (estado.game_over) turnoTexto = 'La partida ha concluido';
-    else if (estado.current_turn === 'white') turnoTexto = 'La IA (blanco) está moviendo su caballo';
-    else turnoTexto = 'Tu turno — elige una casilla verde';
+  currentGameState = estado;
 
-    statusEl.innerHTML = `
-      <div class="status-block">
-        <span class="status-block__label">Estado de la contienda</span>
-        <span class="status-block__value">${turnoTexto}</span>
-      </div>
-      <div class="status-block">
-        <div class="stat-row__head">
-          <span class="stat-row__label">Snitches en el tablero</span>
-          <span class="stat-row__value">${stars} / ${INITIAL_SNITCHES}</span>
-        </div>
-        <div class="stat-bar stat-bar--thin"><div class="stat-bar__fill stat-bar__fill--snitch" style="width:${starsPct}%"></div></div>
-      </div>
-      <div class="status-block">
-        <div class="stat-row__head">
-          <span class="stat-row__label">Pociones en el tablero</span>
-          <span class="stat-row__value">${potions} / ${INITIAL_POTIONS}</span>
-        </div>
-        <div class="stat-bar stat-bar--thin"><div class="stat-bar__fill stat-bar__fill--potion" style="width:${potionsPct}%"></div></div>
-      </div>
-      <div class="status-divider"></div>
-      <div class="status-block status-block--msg">
-        <span class="status-block__label">Último suceso</span>
-        <span class="status-block__value status-block__value--msg">${estado.message || 'La batalla acaba de comenzar'}</span>
-      </div>
-    `;
+  // Animación dopamínica y sonidos si los stats del jugador (Negro) suben tras su movimiento
+  if (previousState && estado.current_turn === 'white') {
+    // Es turno de IA, lo que significa que el jugador negro acaba de mover
+    const r = estado.black_pos[0];
+    const c = estado.black_pos[1];
+    const key = `${r},${c}`;
+
+    if (previousState.stars && previousState.stars[key] !== undefined) {
+      const val = previousState.stars[key];
+      if (wp) { wp.classList.remove('dopamine-pop'); void wp.offsetWidth; wp.classList.add('dopamine-pop'); }
+      snitchSound.currentTime = 0; snitchSound.play().catch(() => { });
+      spawnFloatingText([r, c], `+${val}`, 'snitch');
+    }
+
+    if (previousState.energy_tiles && previousState.energy_tiles[key] !== undefined) {
+      const val = previousState.energy_tiles[key];
+      if (we) { we.classList.remove('dopamine-pop'); void we.offsetWidth; we.classList.add('dopamine-pop'); }
+      potionSound.currentTime = 0; potionSound.play().catch(() => { });
+      spawnFloatingText([r, c], `+${val}`, 'potion');
+    }
+  }
+  previousState = JSON.parse(JSON.stringify(estado));
+
+  // Render tablero
+  renderBoard(estado);
+
+  if (
+    !resolvingForcedPass &&
+    !estado.game_over &&
+    estado.current_turn === 'black' &&
+    getLegalMoves(estado, 'black').length === 0
+  ) {
+    resolvingForcedPass = true;
+    setTimeout(async () => {
+      const nextState = await eel.aplicar_movimiento(currentGameState, null)();
+      resolvingForcedPass = false;
+      if (!nextState) return;
+      currentGameState = nextState;
+      mostrarToast('Pierdes turno (-3 pts).', 1800);
+      updateHUD(currentGameState);
+      if (currentGameState.game_over) {
+        showGameOverAfterMove(currentGameState);
+        return;
+      }
+      if (currentGameState.current_turn === 'white') {
+        setTimeout(() => { processAIMove(); }, 300);
+      }
+    }, 0);
   }
 }
+
+function spawnFloatingText(pos, text, type) {
+  const container = document.getElementById('horses-container');
+  if (!container) return;
+  const floating = document.createElement('div');
+  floating.className = `floating-text floating-text--${type}`;
+  floating.textContent = text;
+  floating.style.top = `${pos[0] * 12.5 + 6.25}%`;
+  floating.style.left = `${pos[1] * 12.5 + 6.25}%`;
+  container.appendChild(floating);
+  setTimeout(() => floating.remove(), 1200);
+}
+
+// ═══════════════════════════════════════════════════════════
+// GAME OVER
+// ═══════════════════════════════════════════════════════════
 
 function showGameOver(estado) {
   const modal = document.getElementById('game-over-modal');
@@ -105,114 +365,240 @@ function showGameOver(estado) {
   const content = document.getElementById('game-over-content');
   if (!modal || !content) return;
 
-  let resultText = 'Empate';
-  if (estado.winner === 'white') resultText = 'Victoria de la IA';
-  else if (estado.winner === 'black') resultText = '¡Victoria tuya!';
+  let resultText = 'EMPATE';
+  if (estado.winner === 'white') resultText = 'VICTORIA DE LA IA';
+  else if (estado.winner === 'black') resultText = '¡VICTORIA TUYA!';
 
   title.textContent = resultText;
   content.innerHTML = `
-    <div class="stat-row">
-      <div class="stat-row__head">
-        <span class="stat-row__label">IA (Blanco)</span>
-        <span class="stat-row__value">${estado.white_points} pts</span>
-      </div>
-      <div class="stat-bar"><div class="stat-bar__fill stat-bar__fill--points" style="width:${(estado.white_points / MAX_POINTS) * 100}%"></div></div>
+    <div class="result-row">
+      <span>IA (Blanco)</span>
+      <span>${estado.white_points} pts</span>
     </div>
-    <div class="stat-row">
-      <div class="stat-row__head">
-        <span class="stat-row__label">Tú (Negro)</span>
-        <span class="stat-row__value">${estado.black_points} pts</span>
-      </div>
-      <div class="stat-bar"><div class="stat-bar__fill stat-bar__fill--points" style="width:${(estado.black_points / MAX_POINTS) * 100}%"></div></div>
+    <div class="result-row">
+      <span>Tú (Negro)</span>
+      <span>${estado.black_points} pts</span>
     </div>
   `;
-  modal.classList.add('report-modal--open');
+  modal.classList.add('modal-overlay--open');
+}
+
+// ═══════════════════════════════════════════════════════════
+// CELL CLICK (jugador humano)
+// ═══════════════════════════════════════════════════════════
+
+let currentGameState = null;
+window.debugMode = false;
+
+window.onDebugMode = function (enabled) {
+  window.debugMode = !!enabled;
+  mostrarToast(`Debug ${window.debugMode ? 'ACTIVADO' : 'DESACTIVADO'}`, 2200);
+};
+
+async function onCellClick(row, col) {
+  if (!currentGameState || currentGameState.game_over) {
+    return;
+  }
+
+  if (window.debugMode) {
+    const debugPayload = { ...currentGameState, debug_move: [row, col] };
+    if (typeof eel !== 'undefined' && eel.dev_show_state) {
+      eel.dev_show_state(debugPayload)();
+    }
+    mostrarToast(`Debug: movimiento de jugador a (${row}, ${col})`, 1800);
+    return;
+  }
+
+  if (currentGameState.current_turn !== 'black') {
+    mostrarToast('No es tu turno. Espera al caballo blanco.', 1800);
+    return;
+  }
+
+  // Validate locally (for UI feedback only — the backend enforces rules)
+  const validMoves = getLegalMoves(currentGameState, 'black');
+  const isValid = validMoves.some(move => move[0] === row && move[1] === col);
+  if (!isValid) {
+    mostrarToast('Movimiento inválido para el caballo negro.', 1800);
+    return;
+  }
+
+  // Delegate the state transition entirely to the backend
+  const nextState = await eel.aplicar_movimiento(currentGameState, [row, col])();
+  if (!nextState) return;
+
+  currentGameState = nextState;
+  updateHUD(currentGameState);
+
+  if (currentGameState.game_over) {
+    showGameOverAfterMove(currentGameState);
+    return;
+  }
+
+  setTimeout(() => { processAIMove(); }, 300);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INICIALIZACIÓN
+// ═══════════════════════════════════════════════════════════
+
+function safeReadEditorConfig() {
+  try {
+    return JSON.parse(localStorage.getItem('knight_editor_config') || '{}');
+  } catch (error) {
+    console.warn('Configuracion del editor invalida, se ignora.', error);
+    return {};
+  }
+}
+
+function getConfiguredValue(item, fallbackValue) {
+  if (typeof item === 'string') return fallbackValue;
+  const value = Number(item?.v);
+  return Number.isFinite(value) && value > 0 ? value : fallbackValue;
+}
+
+function buildEditorInitialState() {
+  const editorConfig = safeReadEditorConfig();
+
+  if (!Array.isArray(editorConfig.player) || !Array.isArray(editorConfig.opponent)) {
+    return null;
+  }
+
+  const stars = {};
+  const energy_tiles = {};
+
+  Object.entries(editorConfig.board || {}).forEach(([key, item]) => {
+    const type = typeof item === 'string' ? item : (item?.t || '');
+    if (type === 'snitch') {
+      stars[key] = getConfiguredValue(item, 5);
+    }
+    if (type === 'potion') {
+      energy_tiles[key] = getConfiguredValue(item, 3);
+    }
+  });
+
+  return {
+    board_size: 8,
+    nivel: editorConfig.level || localStorage.getItem('knight_nivel_seleccionado') || 'principiante',
+    // En GameState, white = IA/oponente y black = jugador.
+    // El editor guarda "player" y "opponent" desde la perspectiva visual.
+    white_pos: editorConfig.opponent,
+    black_pos: editorConfig.player,
+    stars,
+    energy_tiles,
+    white_energy: 7,
+    black_energy: 7,
+    white_points: 0,
+    black_points: 0,
+    current_turn: 'white',
+    game_over: false,
+    winner: null,
+    valid_moves: []
+  };
+}
+
+function startGameFromState(estado) {
+  currentGameState = estado;
+  updateHUD(currentGameState);
+  if (currentGameState.current_turn === 'white') {
+    setTimeout(async () => {
+      await processAIMove();
+    }, 1500);
+  }
 }
 
 async function cargarPartida() {
   try {
-    // TODO: Inicializar y mantener el estado de verdad desde el lado del cliente (Frontend)
-    // ==== ESTADO SIMULADO PARA PORDER VISUALIZAR EL MOCKUP ====
-    const nivelGuardado = localStorage.getItem('knight_nivel_seleccionado') || 'principiante';
-    const estadoInicial = {
-      board_size: 8,
-      nivel: nivelGuardado,
-      white_pos: [0, 1],
-      black_pos: [7, 6],
-      stars: {'2,2': 2, '5,5': 3, '4,1': 4},
-      energy_tiles: {'3,3': 2, '6,1': 3},
-      white_energy: 7,
-      black_energy: 7,
-      white_points: 0,
-      black_points: 0,
-      current_turn: 'white',
-      game_over: false,
-      winner: null,
-      message: 'Partida simulada iniciada (turno IA primer movimiento)',
-      valid_moves: []
-    };
-    updateHUD(estadoInicial);
-    // Dispara el evento clave que levanta el tablero en map.js
-    window.dispatchEvent(new CustomEvent('partida-lista', { detail: estadoInicial }));
+    const gameSource = localStorage.getItem('knight_game_source');
+
+    if (gameSource === 'editor') {
+      const editorState = buildEditorInitialState();
+      if (editorState) {
+        startGameFromState(editorState);
+        return;
+      }
+      console.warn('No se pudo cargar la partida personalizada; se usara mapa aleatorio.');
+    }
+
+    if (typeof eel !== 'undefined' && eel.solicitar_mapa_aleatorio) {
+      const estadoMock = await eel.solicitar_mapa_aleatorio()();
+      if (estadoMock) {
+        const nivelGuardado = localStorage.getItem('knight_nivel_seleccionado') || 'principiante';
+        const defaultState = {
+          white_energy: 7,
+          black_energy: 7,
+          white_points: 0,
+          black_points: 0,
+          current_turn: 'white',
+          game_over: false,
+          winner: null,
+          nivel: nivelGuardado
+        };
+        startGameFromState({ ...defaultState, ...estadoMock });
+        return;
+      }
+    }
+
+    // Fallback local para ejecutar el tablero sin Eel durante desarrollo.
+    const estadoInicial = buildEditorInitialState();
+    if (estadoInicial) startGameFromState(estadoInicial);
   } catch (e) {
-    console.error(e);
+    console.error('Error cargando partida:', e);
   }
 }
 
-window.onEstadoActualizado = function (estado) {
+// ── API pública ────────────────────────────────────────────
+function onEstadoActualizado(estado) {
   updateHUD(estado);
-  if (estado.game_over) showGameOver(estado);
-};
+  if (estado.game_over) showGameOverAfterMove(estado);
+}
+window.onEstadoActualizado = onEstadoActualizado;
 
 window.nuevaPartida = async function () {
   const modal = document.getElementById('game-over-modal');
-  if (modal) modal.classList.remove('report-modal--open');
-  
-  // TODO: Reiniciar estado en el lado del cliente
-  const nivelGuardado = localStorage.getItem('knight_nivel_seleccionado') || 'principiante';
-  const nuevoEstado = {
-      board_size: 8,
-      nivel: nivelGuardado,
-      white_pos: [0, 1],
-      black_pos: [7, 6],
-      stars: {'2,2': 2, '5,5': 3, '4,1': 4},
-      energy_tiles: {'3,3': 2, '6,1': 3},
-      white_energy: 7,
-      black_energy: 7,
-      white_points: 0,
-      black_points: 0,
-      current_turn: 'white',
-      game_over: false,
-      winner: null,
-      message: 'Nueva partida simulada',
-      valid_moves: []
-  };
-  updateHUD(nuevoEstado);
-  window.dispatchEvent(new CustomEvent('partida-reiniciada', { detail: nuevoEstado }));
-  mostrarToast('Nueva partida simulada inicializada');
+  if (modal) modal.classList.remove('modal-overlay--open');
+
+  const entrySound = new Audio(`${SOUND_BASE}entry_game.mp3`);
+  entrySound.volume = 0.6;
+  entrySound.play().catch(() => { });
+
+  isBoardInitialized = false;
+  await cargarPartida();
+  mostrarToast('Nueva partida inicializada');
 };
 
 window.irAlMenu = function () {
   document.body.classList.add('fade-out');
-  setTimeout(() => { window.location.href = '../menu.html'; }, 450);
+  setTimeout(() => { window.location.href = '/menu.html'; }, 450);
 };
 
-window.toggleLegend = function () {
-  const content = document.getElementById('legend-content');
-  const arrow = document.getElementById('legend-arrow');
-  const hidden = content.classList.toggle('legend-body--hidden');
-  arrow.style.transform = hidden ? 'rotate(180deg)' : 'rotate(0deg)';
-};
-
+// ── DOM Ready ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   cargarPartida();
+
+  // Close game over modal
   document.getElementById('btn-close-game-over')?.addEventListener('click', () => {
-    document.getElementById('game-over-modal')?.classList.remove('report-modal--open');
+    document.getElementById('game-over-modal')?.classList.remove('modal-overlay--open');
   });
+
+  // Hover sound para botones del footer
+  document.querySelectorAll('.footer-btn').forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      hoverSound.currentTime = 0;
+      hoverSound.play().catch(() => { });
+    });
+  });
+
+  // Reproducir música al primer tap/click (autolay policy protection)
+  document.addEventListener('click', () => {
+    if (bgAudio.paused) {
+      bgAudio.play().catch(() => { });
+    }
+  }, { once: true });
 });
 
+// ── Eel expose ─────────────────────────────────────────────
 if (typeof eel !== 'undefined') {
   eel.expose(mostrar_notificacion);
+  eel.expose(onEstadoActualizado);
 }
 function mostrar_notificacion(msg) { mostrarToast(msg, 4000); }
-window.mostrarToast = mostrarToast;

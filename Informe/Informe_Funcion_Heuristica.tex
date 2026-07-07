@@ -251,4 +251,14 @@ Además, la separación entre la representación visual y la representación ló
 
 En conjunto, la función heurística actúa como una aproximación práctica al valor real de una posición cuando la búsqueda no puede llegar hasta el final de la partida. Gracias a esta evaluación, la IA puede priorizar movimientos que no solo generan beneficios inmediatos, sino que también conservan energía, mejoran su movilidad y reducen el riesgo de quedar en desventaja frente al jugador.
 
+\section{Añadido: heurísticas configurables y torneo}
+
+Como extensión del proyecto, se añadió la posibilidad de trabajar con diferentes funciones heurísticas. Cada heurística puede tener un nombre propio y una combinación distinta de pesos para los parámetros evaluados: diferencia de puntos, diferencia de energía, movilidad, estrellas alcanzables, energía alcanzable y bloqueo. Esto permite comparar estilos de juego diferentes, por ejemplo heurísticas más agresivas, defensivas, centradas en recolectar puntos o enfocadas en conservar energía.
+
+También se incorporó un nuevo parámetro llamado control central. Este valor mide qué tan cerca se encuentra cada caballo del centro del tablero. La idea es que un caballo ubicado en posiciones centrales suele tener más posibilidades de movimiento que uno ubicado en bordes o esquinas. Por eso, el control central se calcula como una diferencia entre la centralidad del caballo \textit{white} y la centralidad del caballo \textit{black}. Si la IA está mejor posicionada en el centro, este componente aumenta la evaluación; si el rival tiene mejor control central, la disminuye.
+
+En los modos de comparación entre inteligencias artificiales, minimax conserva la misma estructura de búsqueda con poda alfa-beta, pero la evaluación de los estados intermedios se realiza con la heurística seleccionada. De esta forma, dos IA pueden jugar con funciones de evaluación diferentes aunque respeten las mismas reglas del juego.
+
+Finalmente, se añadió un torneo de heurísticas. En este modo se seleccionan 2, 4, 8 o 16 heurísticas y se enfrentan por rondas: final, semifinales, cuartos u octavos según la cantidad de participantes. Cada enfrentamiento directo se juega intercambiando roles para reducir la ventaja de color: una partida con una heurística como \textit{white} y la otra como \textit{black}, y luego una segunda partida con los roles invertidos. La ganadora se decide primero por partidas ganadas, luego por puntos acumulados y, si aún existe empate, mediante una partida adicional de desempate. Esto permite observar qué combinación de pesos produce mejores resultados frente a otras estrategias.
+
 \end{document}

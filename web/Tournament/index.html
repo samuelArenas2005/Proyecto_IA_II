@@ -45,6 +45,10 @@
             </label>
           </div>
 
+          <button class="menu-btn custom-heuristic-button" id="btn-custom-heuristic">
+            <span class="menu-btn__label">+ HEURÍSTICA PERSONALIZADA</span>
+          </button>
+
           <div class="heuristic-list" id="heuristic-list"></div>
 
           <div class="tournament-actions">
@@ -63,6 +67,17 @@
   </main>
 
   <div class="toast" id="menu-toast"></div>
+  <div id="heuristic-modal" class="modal-overlay">
+    <form class="custom-modal-card" id="custom-heuristic-form">
+      <h2 class="modal-title">Nueva heurística</h2>
+      <label class="custom-name-label">Nombre <input id="custom-heuristic-name" maxlength="40" required /></label>
+      <div class="custom-weight-grid" id="custom-weight-grid"></div>
+      <div class="custom-modal-actions">
+        <button type="submit" class="menu-btn"><span class="menu-btn__label">GUARDAR</span></button>
+        <button type="button" class="menu-btn menu-btn--back" id="btn-close-heuristic-modal"><span class="menu-btn__label">CANCELAR</span></button>
+      </div>
+    </form>
+  </div>
 
   <script src="/eel.js" onerror="console.warn('eel.js no disponible')"></script>
   <script src="tournament.js"></script>

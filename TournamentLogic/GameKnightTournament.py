@@ -98,14 +98,35 @@ def play_match(heuristic_a, heuristic_b, depth=2, seed=2026):
     elif second_game["winner"] == "white":
         score_b += 1
 
+    tiebreaker_game = None
+
     if score_a > score_b:
         winner = heuristic_a
     elif score_b > score_a:
         winner = heuristic_b
-    elif points_a >= points_b:
+    elif points_a > points_b:
         winner = heuristic_a
-    else:
+    elif points_b > points_a:
         winner = heuristic_b
+    else:
+        rng = random.Random(seed + 9999)
+        a_plays_white = rng.choice([True, False])
+        if a_plays_white:
+            tiebreaker_game = _simulate_game(heuristic_a, heuristic_b, depth, seed + 10000)
+            if tiebreaker_game["winner"] == "white":
+                winner = heuristic_a
+            elif tiebreaker_game["winner"] == "black":
+                winner = heuristic_b
+            else:
+                winner = heuristic_a if tiebreaker_game["white_points"] >= tiebreaker_game["black_points"] else heuristic_b
+        else:
+            tiebreaker_game = _simulate_game(heuristic_b, heuristic_a, depth, seed + 10000)
+            if tiebreaker_game["winner"] == "black":
+                winner = heuristic_a
+            elif tiebreaker_game["winner"] == "white":
+                winner = heuristic_b
+            else:
+                winner = heuristic_a if tiebreaker_game["black_points"] >= tiebreaker_game["white_points"] else heuristic_b
 
     return {
         "a": heuristic_a,
@@ -116,6 +137,7 @@ def play_match(heuristic_a, heuristic_b, depth=2, seed=2026):
         "points_a": points_a,
         "points_b": points_b,
         "games": [first_game, second_game],
+        "tiebreaker_game": tiebreaker_game,
     }
 
 
@@ -156,7 +178,7 @@ def play_tournament_round(heuristic_names, depth=2, total_participants=None, rou
             selected[index],
             selected[index + 1],
             depth=depth,
-            seed=2026 + total_participants * 1000 + round_index * 100 + index,
+            seed=random.randint(1, 2_000_000_000),
         )
         matches.append(match)
         winners.append(match["winner"])

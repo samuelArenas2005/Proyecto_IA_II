@@ -3,6 +3,17 @@
 let heuristicOptions = [];
 let tournamentRunning = false;
 
+const CUSTOM_HEURISTICS_KEY = 'knight_custom_heuristics';
+const CUSTOM_WEIGHT_FIELDS = [
+  { key: 'points', label: 'Diferencia de puntos', symbol: 'Pdiff', value: 100 },
+  { key: 'energy', label: 'Diferencia de energia', symbol: 'Ediff', value: 10 },
+  { key: 'mobility', label: 'Diferencia de movilidad', symbol: 'Mdiff', value: 5 },
+  { key: 'stars', label: 'Estrellas alcanzables', symbol: 'Sdiff', value: 20 },
+  { key: 'energy_tiles', label: 'Pociones alcanzables', symbol: 'Tdiff', value: 8 },
+  { key: 'blocked', label: 'Bloqueo', symbol: 'Bscore', value: 50 },
+  { key: 'center', label: 'Control central', symbol: 'Cdiff', value: 2 },
+];
+
 function mostrarToast(msg, dur = 2600) {
   const toast = document.getElementById('menu-toast');
   toast.textContent = msg;
@@ -13,6 +24,45 @@ function mostrarToast(msg, dur = 2600) {
 
 function labelFor(id) {
   return heuristicOptions.find(item => item.id === id)?.label || id;
+}
+
+function getCustomHeuristics() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_HEURISTICS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomHeuristic(name, weights) {
+  const custom = getCustomHeuristics();
+  custom.push({
+    id: `custom_${Date.now()}`,
+    label: name,
+    weights,
+  });
+  localStorage.setItem(CUSTOM_HEURISTICS_KEY, JSON.stringify(custom));
+}
+
+async function refreshHeuristics() {
+  heuristicOptions = await eel.registrar_heuristicas_personalizadas(getCustomHeuristics())();
+  renderHeuristics();
+}
+
+function openCustomHeuristicModal() {
+  document.getElementById('custom-heuristic-name').value = '';
+  document.getElementById('custom-weight-grid').innerHTML = CUSTOM_WEIGHT_FIELDS.map(field => `
+    <label class="custom-weight-row">
+      <span>${field.symbol}</span>
+      ${field.label}
+      <input type="number" step="1" value="${field.value}" data-weight-key="${field.key}" />
+    </label>
+  `).join('');
+  document.getElementById('heuristic-modal').classList.add('modal-overlay--open');
+}
+
+function closeCustomHeuristicModal() {
+  document.getElementById('heuristic-modal').classList.remove('modal-overlay--open');
 }
 
 function renderFormulaMarkup(item) {
@@ -148,6 +198,15 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function shuffleList(items) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
 function renderPendingRound(label) {
   const rounds = document.getElementById('rounds');
   const pending = document.createElement('section');
@@ -176,6 +235,13 @@ function renderCompletedRound(roundResult) {
         <div class="match-detail">
           Victorias: ${match.score_a}-${match.score_b} | Puntos acumulados: ${match.points_a}-${match.points_b}
         </div>
+        ${match.tiebreaker_game ? `
+          <div class="match-tiebreaker">
+            Desempate: ${labelFor(match.tiebreaker_game.white_heuristic)} (Plateada)
+            ${match.tiebreaker_game.white_points} puntos - ${match.tiebreaker_game.black_points} puntos
+            ${labelFor(match.tiebreaker_game.black_heuristic)} (Dorada)
+          </div>
+        ` : ''}
       </article>
     `).join('')}
   `;
@@ -213,6 +279,7 @@ async function runTournament() {
   let roundNumber = 1;
 
   while (currentRound.length > 1) {
+    currentRound = shuffleList(currentRound);
     const label = nextRoundLabel(currentRound.length);
     document.getElementById('champion-box').textContent = `${label}: ${currentRound.length} heuristicas en competencia`;
     renderPendingRound(label);
@@ -261,8 +328,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     particles.appendChild(p);
   }
 
-  heuristicOptions = await eel.listar_heuristicas()();
-  renderHeuristics();
+  await refreshHeuristics();
   document.getElementById('participant-count').addEventListener('change', autoSelectFirstN);
   document.getElementById('btn-run-tournament').addEventListener('click', runTournament);
+  document.getElementById('btn-custom-heuristic').addEventListener('click', openCustomHeuristicModal);
+  document.getElementById('btn-close-heuristic-modal').addEventListener('click', closeCustomHeuristicModal);
+  document.getElementById('custom-heuristic-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const name = document.getElementById('custom-heuristic-name').value.trim();
+    if (!name) return;
+    const weights = {};
+    document.querySelectorAll('[data-weight-key]').forEach(input => {
+      weights[input.dataset.weightKey] = Number(input.value || 0);
+    });
+    saveCustomHeuristic(name, weights);
+    closeCustomHeuristicModal();
+    await refreshHeuristics();
+    mostrarToast(`Heuristica "${name}" creada.`);
+  });
 });

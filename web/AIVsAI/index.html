@@ -34,6 +34,7 @@
     </label>
     <button class="footer-btn" id="btn-ai-play"><span>START</span></button>
     <button class="footer-btn" id="btn-ai-pause"><span>PAUSE</span></button>
+    <button class="footer-btn" id="btn-custom-heuristic"><span>+ HEURÍSTICA</span></button>
   </section>
 
   <div class="scoreboard scoreboard--player" id="scoreboard-player">
@@ -85,6 +86,17 @@
   </footer>
 
   <div class="toast" id="toast"><span id="toast-msg"></span></div>
+  <div id="heuristic-modal" class="modal-overlay">
+    <form class="custom-modal-card" id="custom-heuristic-form">
+      <h2 class="modal-title">Nueva heurística</h2>
+      <label class="custom-name-label">Nombre <input id="custom-heuristic-name" maxlength="40" required /></label>
+      <div class="custom-weight-grid" id="custom-weight-grid"></div>
+      <div class="custom-modal-actions">
+        <button type="submit" class="footer-btn"><span>GUARDAR</span></button>
+        <button type="button" class="footer-btn" id="btn-close-heuristic-modal"><span>CANCELAR</span></button>
+      </div>
+    </form>
+  </div>
   <div id="game-over-modal" class="modal-overlay">
     <div class="modal-card">
       <h2 class="modal-title" id="game-over-title">Fin del juego</h2>

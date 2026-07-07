@@ -1,0 +1,7 @@
+.scoreboard__difficulty {
+  text-align: center;
+}
+
+.human-active {
+  filter: drop-shadow(0 0 14px rgba(232, 212, 139, 0.55));
+}

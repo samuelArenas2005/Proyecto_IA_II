@@ -40,14 +40,26 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 
       <nav class="menu-buttons" aria-label="Menú principal">
 
-        <!-- PLAY -->
-        <button id="btn-inicio" class="menu-btn" onclick="irASeleccionNivel()" title="Iniciar partida">
-          <span class="menu-btn__label">PLAY</span>
+        <!-- HUMANO VS IA -->
+        <button id="btn-inicio" class="menu-btn" onclick="irASeleccionNivel()" title="Modo normal humano vs IA">
+          <span class="menu-btn__label">HUMANO VS IA</span>
         </button>
 
-        <!-- LEVEL MAP -->
-        <button id="btn-level-map" class="menu-btn" onclick="window.location.href='RenderMap/index.html'" title="Level Map">
-          <span class="menu-btn__label">LEVEL MAP</span>
+        <!-- HUMANO VS HUMANO -->
+        <button id="btn-human-vs-human" class="menu-btn" onclick="irAHumanoVsHumano()" title="Modo humano vs humano">
+          <span class="menu-btn__label">HUMANO VS HUMANO</span>
+          <img src="assets/NewSprints/player.png" alt="" class="menu-btn__icon-img" />
+        </button>
+
+        <!-- IA VS IA -->
+        <button id="btn-ai-vs-ai" class="menu-btn" onclick="irAIAVsIA()" title="Modo IA vs IA">
+          <span class="menu-btn__label">IA VS IA</span>
+          <img src="assets/NewSprints/enemy_player.png" alt="" class="menu-btn__icon-img" />
+        </button>
+
+        <!-- TORNEO -->
+        <button id="btn-tournament" class="menu-btn" onclick="irATorneoHeuristicas()" title="Torneo de heurísticas">
+          <span class="menu-btn__label">TORNEO HEURÍSTICAS</span>
           <img src="assets/NewSprints/icon_map.png" alt="" class="menu-btn__icon-img" />
         </button>
 

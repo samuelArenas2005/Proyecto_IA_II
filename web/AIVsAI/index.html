@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knight Energy - IA vs IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../RenderMap/style.css" />
+  <link rel="stylesheet" href="ai.css" />
+</head>
+<body>
+  <div id="bg-image"></div>
+  <div id="overlay"></div>
+
+  <section class="ai-control-panel">
+    <div class="ai-control-title">IA VS IA</div>
+    <label>
+      Plateada
+      <select id="white-heuristic"></select>
+    </label>
+    <label>
+      Dorada
+      <select id="black-heuristic"></select>
+    </label>
+    <label>
+      Profundidad
+      <select id="ai-depth">
+        <option value="2">2</option>
+        <option value="4">4</option>
+        <option value="6">6</option>
+      </select>
+    </label>
+    <button class="footer-btn" id="btn-ai-play"><span>START</span></button>
+    <button class="footer-btn" id="btn-ai-pause"><span>PAUSE</span></button>
+  </section>
+
+  <div class="scoreboard scoreboard--player" id="scoreboard-player">
+    <img src="../assets/NewSprints/marcador_player.png" alt="" class="scoreboard__bg" />
+    <div class="scoreboard__content">
+      <h3 class="scoreboard__title">IA DORADA</h3>
+      <div class="scoreboard__body">
+        <img src="../assets/NewSprints/player.png" alt="IA dorada" class="scoreboard__avatar" />
+        <div class="scoreboard__stats">
+          <div class="scoreboard__stat"><span class="scoreboard__stat-label">ENERGY:</span><img src="../assets/NewSprints/energy_icon.png" alt="" class="scoreboard__stat-icon" /><span class="scoreboard__stat-value" id="black-energy">7</span></div>
+          <div class="scoreboard__stat"><span class="scoreboard__stat-label">POINTS:</span><img src="../assets/NewSprints/snitch_dorada.png" alt="" class="scoreboard__stat-icon scoreboard__stat-icon--snitch" /><span class="scoreboard__stat-value" id="black-points">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <article class="heuristic-detail-card heuristic-detail-card--black" id="black-heuristic-detail"></article>
+
+  <div class="scoreboard scoreboard--enemy" id="scoreboard-enemy">
+    <img src="../assets/NewSprints/marcador_enemy.png" alt="" class="scoreboard__bg" />
+    <div class="scoreboard__content">
+      <h3 class="scoreboard__title">IA PLATEADA</h3>
+      <div class="scoreboard__body">
+        <div class="scoreboard__stats scoreboard__stats--right">
+          <div class="scoreboard__stat"><span class="scoreboard__stat-label">ENERGY:</span><img src="../assets/NewSprints/energy_icon.png" alt="" class="scoreboard__stat-icon" /><span class="scoreboard__stat-value" id="white-energy">7</span></div>
+          <div class="scoreboard__stat"><span class="scoreboard__stat-label">POINTS:</span><img src="../assets/NewSprints/snitch_dorada.png" alt="" class="scoreboard__stat-icon scoreboard__stat-icon--snitch" /><span class="scoreboard__stat-value" id="white-points">0</span></div>
+        </div>
+        <img src="../assets/NewSprints/enemy_player.png" alt="IA plateada" class="scoreboard__avatar" />
+      </div>
+      <div class="scoreboard__difficulty" id="ai-status-label">ESPERANDO</div>
+    </div>
+  </div>
+  <article class="heuristic-detail-card heuristic-detail-card--white" id="white-heuristic-detail"></article>
+
+  <div class="board-area">
+    <div class="board-wrapper">
+      <img src="../assets/NewSprints/tablero.png" alt="Tablero" class="board-bg-img" />
+      <div class="board-grid" id="board-grid"></div>
+    </div>
+  </div>
+
+  <div class="game-brand-title"><h1 class="brand-title">KNIGHT<br>ENERGY</h1></div>
+
+  <footer class="game-footer">
+    <div class="footer-turn">CURRENT TURN: <strong id="turn-label">IA PLATEADA</strong></div>
+    <div class="footer-buttons">
+      <button class="footer-btn" onclick="irAlMenu()"><span>MENU</span></button>
+      <button class="footer-btn" onclick="nuevaPartida()"><span>RESTART</span></button>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast"><span id="toast-msg"></span></div>
+  <div id="game-over-modal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 class="modal-title" id="game-over-title">Fin del juego</h2>
+      <div class="modal-content" id="game-over-content"></div>
+      <button class="footer-btn footer-btn--modal" onclick="nuevaPartida()"><span>JUGAR DE NUEVO</span></button>
+      <button class="modal-close" id="btn-close-game-over">x</button>
+    </div>
+  </div>
+
+  <script src="/eel.js" onerror="console.warn('eel.js no disponible')"></script>
+  <script src="ai.js"></script>
+</body>
+</html>

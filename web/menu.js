@@ -97,6 +97,7 @@ window.seleccionarNivelYJugar = async function (nivel) {
   const overlay = document.getElementById('overlay');
   localStorage.setItem('knight_nivel_seleccionado', nivel);
   localStorage.setItem('knight_game_source', 'random');
+  localStorage.setItem('knight_game_mode', 'human-vs-ai');
 
   const entrySound = new Audio('assets/Sounds/entry_game.mp3');
   entrySound.volume = 0.6;
@@ -111,6 +112,37 @@ window.seleccionarNivelYJugar = async function (nivel) {
   setTimeout(() => {
     window.location.href = 'RenderMap/index.html';
   }, 520);
+};
+
+function navigateMode(path, mode) {
+  const root = document.getElementById('menu-root');
+  const overlay = document.getElementById('overlay');
+  localStorage.setItem('knight_game_mode', mode);
+
+  const entrySound = new Audio('assets/Sounds/entry_game.mp3');
+  entrySound.volume = 0.6;
+  entrySound.play().catch(()=>{});
+
+  root.style.transition = 'opacity 0.5s ease';
+  overlay.style.transition = 'opacity 0.5s ease';
+  root.style.opacity = '0';
+  overlay.style.opacity = '0';
+
+  setTimeout(() => {
+    window.location.href = path;
+  }, 520);
+}
+
+window.irAHumanoVsHumano = function () {
+  navigateMode('HumanVsHuman/index.html', 'human-vs-human');
+};
+
+window.irAIAVsIA = function () {
+  navigateMode('AIVsAI/index.html', 'ai-vs-ai');
+};
+
+window.irATorneoHeuristicas = function () {
+  navigateMode('Tournament/index.html', 'heuristic-tournament');
 };
 
 window.exitGame = function () {

@@ -3,6 +3,9 @@ import sys
 from types import SimpleNamespace
 from GameState import GameState
 from GameKnightEnergy import get_best_movement, build_random_map_state
+from GameKnightHeuristicAI import get_best_movement_with_heuristic
+from GameKnightTournament import play_tournament_round, run_tournament
+from HeuristicStrategies import list_heuristics
 
 eel.init("web")
 
@@ -63,6 +66,42 @@ def obtener_movimiento_ia(estado, profundidad):
         return {"movimiento": movimiento, "mensaje": "El juego ha terminado por la IA.", "mode": machine_move_mode}
 
     return {"movimiento": movimiento, "mode": machine_move_mode}
+
+
+@eel.expose
+def listar_heuristicas():
+    return list_heuristics()
+
+
+@eel.expose
+def obtener_movimiento_ia_heuristica(estado, profundidad, heuristica):
+    try:
+        profundidad = int(profundidad)
+    except (TypeError, ValueError):
+        profundidad = 2
+
+    game_state = GameState(normalize_state(estado))
+    if game_state.is_end_game():
+        return {"movimiento": None, "mensaje": "El juego ha terminado."}
+
+    movimiento = get_best_movement_with_heuristic(game_state, profundidad, heuristica)
+    return {"movimiento": movimiento, "heuristica": heuristica}
+
+
+@eel.expose
+def ejecutar_torneo_heuristicas(heuristicas, profundidad):
+    try:
+        return run_tournament(heuristicas, profundidad)
+    except Exception as error:
+        return {"error": str(error)}
+
+
+@eel.expose
+def ejecutar_ronda_torneo_heuristicas(heuristicas, profundidad, total_participantes, numero_ronda):
+    try:
+        return play_tournament_round(heuristicas, profundidad, total_participantes, numero_ronda)
+    except Exception as error:
+        return {"error": str(error)}
 
 
 @eel.expose

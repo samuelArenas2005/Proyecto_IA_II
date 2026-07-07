@@ -88,6 +88,8 @@ HEURISTIC_WEIGHTS = {
     },
 }
 
+CUSTOM_HEURISTIC_WEIGHTS = {}
+
 
 WEIGHT_FIELDS = (
     ("points", "Diferencia de puntos", "Pdiff"),
@@ -116,14 +118,56 @@ def build_weight_detail(weights):
     ]
 
 
+def get_all_heuristics():
+    return {**HEURISTIC_WEIGHTS, **CUSTOM_HEURISTIC_WEIGHTS}
+
+
+def register_custom_heuristics(heuristics):
+    CUSTOM_HEURISTIC_WEIGHTS.clear()
+    if not isinstance(heuristics, list):
+        return list_heuristics()
+
+    for index, item in enumerate(heuristics):
+        if not isinstance(item, dict):
+            continue
+
+        raw_id = str(item.get("id") or f"custom_{index + 1}")
+        safe_id = "".join(ch for ch in raw_id.lower().replace(" ", "_") if ch.isalnum() or ch == "_")
+        if not safe_id.startswith("custom_"):
+            safe_id = f"custom_{safe_id}"
+
+        label = str(item.get("label") or item.get("name") or f"Heuristica {index + 1}")[:40]
+        weights_by_key = item.get("weights", {})
+        if isinstance(weights_by_key, list):
+            parsed_weights = tuple(int(float(value)) for value in weights_by_key[:len(WEIGHT_FIELDS)])
+        else:
+            parsed_weights = tuple(
+                int(float(weights_by_key.get(key, 0)))
+                for key, _, _ in WEIGHT_FIELDS
+            )
+
+        if len(parsed_weights) != len(WEIGHT_FIELDS):
+            continue
+
+        CUSTOM_HEURISTIC_WEIGHTS[safe_id] = {
+            "label": label,
+            "description": "Heuristica personalizada creada desde la interfaz.",
+            "weights": parsed_weights,
+            "custom": True,
+        }
+
+    return list_heuristics()
+
+
 def list_heuristics():
     heuristics = []
-    for key, data in HEURISTIC_WEIGHTS.items():
+    for key, data in get_all_heuristics().items():
         weights = data["weights"]
         heuristics.append({
             "id": key,
             "label": data["label"],
             "description": data["description"],
+            "custom": bool(data.get("custom", False)),
             "weights": build_weight_detail(weights),
             "formula": build_formula(weights),
             "variables": [
@@ -136,14 +180,14 @@ def list_heuristics():
 
 
 def normalize_heuristic_name(name):
-    return name if name in HEURISTIC_WEIGHTS else "balanced"
+    return name if name in get_all_heuristics() else "balanced"
 
 
 def evaluate_state(game_state, heuristic_name="balanced"):
     if game_state.is_end_game():
         return game_state.utility_function()
 
-    weights = HEURISTIC_WEIGHTS[normalize_heuristic_name(heuristic_name)]["weights"]
+    weights = get_all_heuristics()[normalize_heuristic_name(heuristic_name)]["weights"]
     (
         points_weight,
         energy_weight,

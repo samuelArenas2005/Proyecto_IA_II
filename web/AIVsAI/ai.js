@@ -12,6 +12,17 @@ let autoPlaying = false;
 let aiTimer = null;
 let heuristicOptions = [];
 
+const CUSTOM_HEURISTICS_KEY = 'knight_custom_heuristics';
+const CUSTOM_WEIGHT_FIELDS = [
+  { key: 'points', label: 'Diferencia de puntos', symbol: 'Pdiff', value: 100 },
+  { key: 'energy', label: 'Diferencia de energia', symbol: 'Ediff', value: 10 },
+  { key: 'mobility', label: 'Diferencia de movilidad', symbol: 'Mdiff', value: 5 },
+  { key: 'stars', label: 'Estrellas alcanzables', symbol: 'Sdiff', value: 20 },
+  { key: 'energy_tiles', label: 'Pociones alcanzables', symbol: 'Tdiff', value: 8 },
+  { key: 'blocked', label: 'Bloqueo', symbol: 'Bscore', value: 50 },
+  { key: 'center', label: 'Control central', symbol: 'Cdiff', value: 2 },
+];
+
 const hoverSound = new Audio(`${SOUND_BASE}select_menu_sound.mp3`);
 hoverSound.volume = 0.35;
 const potionSound = new Audio(`${SOUND_BASE}energy.mp3`);
@@ -103,14 +114,55 @@ function updateHeuristicDetails() {
 function renderHeuristicSelects() {
   const whiteSelect = document.getElementById('white-heuristic');
   const blackSelect = document.getElementById('black-heuristic');
+  const previousWhite = whiteSelect.value || 'balanced';
+  const previousBlack = blackSelect.value || 'aggressive';
   const html = heuristicOptions.map(item => `<option value="${item.id}">${item.label}</option>`).join('');
   whiteSelect.innerHTML = html;
   blackSelect.innerHTML = html;
-  whiteSelect.value = 'balanced';
-  blackSelect.value = 'aggressive';
-  whiteSelect.addEventListener('change', updateHeuristicDetails);
-  blackSelect.addEventListener('change', updateHeuristicDetails);
+  whiteSelect.value = heuristicOptions.some(item => item.id === previousWhite) ? previousWhite : 'balanced';
+  blackSelect.value = heuristicOptions.some(item => item.id === previousBlack) ? previousBlack : 'aggressive';
+  whiteSelect.onchange = updateHeuristicDetails;
+  blackSelect.onchange = updateHeuristicDetails;
   updateHeuristicDetails();
+}
+
+function getCustomHeuristics() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_HEURISTICS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomHeuristic(name, weights) {
+  const custom = getCustomHeuristics();
+  custom.push({
+    id: `custom_${Date.now()}`,
+    label: name,
+    weights,
+  });
+  localStorage.setItem(CUSTOM_HEURISTICS_KEY, JSON.stringify(custom));
+}
+
+async function refreshHeuristics() {
+  heuristicOptions = await eel.registrar_heuristicas_personalizadas(getCustomHeuristics())();
+  renderHeuristicSelects();
+}
+
+function openCustomHeuristicModal() {
+  document.getElementById('custom-heuristic-name').value = '';
+  document.getElementById('custom-weight-grid').innerHTML = CUSTOM_WEIGHT_FIELDS.map(field => `
+    <label class="custom-weight-row">
+      <span>${field.symbol}</span>
+      ${field.label}
+      <input type="number" step="1" value="${field.value}" data-weight-key="${field.key}" />
+    </label>
+  `).join('');
+  document.getElementById('heuristic-modal').classList.add('modal-overlay--open');
+}
+
+function closeCustomHeuristicModal() {
+  document.getElementById('heuristic-modal').classList.remove('modal-overlay--open');
 }
 
 function spawnFloatingText(pos, text, type) {
@@ -303,8 +355,7 @@ window.irAlMenu = function () {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  heuristicOptions = await eel.listar_heuristicas()();
-  renderHeuristicSelects();
+  await refreshHeuristics();
   await cargarPartida();
 
   document.getElementById('btn-ai-play').addEventListener('click', () => {
@@ -320,6 +371,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('btn-close-game-over')?.addEventListener('click', () => {
     document.getElementById('game-over-modal')?.classList.remove('modal-overlay--open');
+  });
+  document.getElementById('btn-custom-heuristic').addEventListener('click', openCustomHeuristicModal);
+  document.getElementById('btn-close-heuristic-modal').addEventListener('click', closeCustomHeuristicModal);
+  document.getElementById('custom-heuristic-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const name = document.getElementById('custom-heuristic-name').value.trim();
+    if (!name) return;
+    const weights = {};
+    document.querySelectorAll('[data-weight-key]').forEach(input => {
+      weights[input.dataset.weightKey] = Number(input.value || 0);
+    });
+    saveCustomHeuristic(name, weights);
+    closeCustomHeuristicModal();
+    await refreshHeuristics();
+    mostrarToast(`Heuristica "${name}" creada.`);
   });
   document.querySelectorAll('.footer-btn').forEach(btn => {
     btn.addEventListener('mouseenter', () => {

@@ -5,7 +5,7 @@
   transform: translateX(-50%);
   z-index: 60;
   display: grid;
-  grid-template-columns: auto auto auto auto auto auto;
+  grid-template-columns: auto auto auto auto auto auto auto;
   align-items: end;
   gap: 10px;
   max-width: min(1120px, calc(100vw - 24px));
@@ -45,6 +45,63 @@
 .ai-control-panel .footer-btn {
   min-width: 84px;
   padding: 7px 14px;
+}
+
+.custom-modal-card {
+  width: min(620px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid rgba(232, 212, 139, 0.38);
+  border-radius: 8px;
+  background: linear-gradient(165deg, rgba(24, 25, 34, 0.98), rgba(8, 9, 14, 0.98));
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.55);
+}
+
+.custom-name-label {
+  display: grid;
+  gap: 8px;
+  color: var(--gold-light);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.custom-name-label input,
+.custom-weight-row input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(232, 212, 139, 0.26);
+  border-radius: 6px;
+  background: rgba(26, 36, 48, 0.92);
+  color: #f5ecd7;
+  padding: 8px 10px;
+  font-family: 'Cinzel', serif;
+}
+
+.custom-weight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.custom-weight-row {
+  display: grid;
+  gap: 6px;
+  color: rgba(240, 230, 208, 0.82);
+  font-size: 0.72rem;
+}
+
+.custom-weight-row span {
+  color: var(--gold-light);
+  font-weight: 900;
+}
+
+.custom-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
 }
 
 .heuristic-detail-card {

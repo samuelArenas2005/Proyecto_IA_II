@@ -5,7 +5,7 @@ from GameState import GameState
 from GameKnightEnergy import get_best_movement, build_random_map_state
 from GameKnightHeuristicAI import get_best_movement_with_heuristic
 from GameKnightTournament import play_tournament_round, run_tournament
-from HeuristicStrategies import list_heuristics
+from HeuristicStrategies import list_heuristics, register_custom_heuristics
 
 eel.init("web")
 
@@ -71,6 +71,11 @@ def obtener_movimiento_ia(estado, profundidad):
 @eel.expose
 def listar_heuristicas():
     return list_heuristics()
+
+
+@eel.expose
+def registrar_heuristicas_personalizadas(heuristicas):
+    return register_custom_heuristics(heuristicas)
 
 
 @eel.expose

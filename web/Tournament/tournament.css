@@ -21,6 +21,15 @@ body {
   margin-bottom: 16px;
 }
 
+.tournament-header .brand-title {
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+  margin-bottom: 0px;
+}
+
+.tournament-header .brand-subtitle {
+  font-size: clamp(0.9rem, 2vw, 1.2rem);
+}
+
 .tournament-grid {
   display: grid;
   grid-template-columns: minmax(340px, 0.95fr) minmax(420px, 1.25fr);
@@ -158,13 +167,13 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  max-height: 480px;
+  max-height: 340px;
   overflow: auto;
   padding-right: 4px;
 }
 
 .heuristic-option {
-  min-height: 96px;
+  min-height: 80px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);

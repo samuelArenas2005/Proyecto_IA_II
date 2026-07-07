@@ -14,8 +14,12 @@ const hoverSound = new Audio(`${SOUND_BASE}select_menu_sound.mp3`);
 hoverSound.volume = 0.35;
 const potionSound = new Audio(`${SOUND_BASE}energy.mp3`);
 const snitchSound = new Audio(`${SOUND_BASE}coin.mp3`);
+const victorySound = new Audio(`${SOUND_BASE}victory.mp3`);
+const loseSound = new Audio(`${SOUND_BASE}lose.mp3`);
 potionSound.volume = 0.6;
 snitchSound.volume = 0.6;
+victorySound.volume = 0.7;
+loseSound.volume = 0.7;
 
 function getLegalMoves(estado, turn = estado.current_turn || 'white') {
   const whitePos = estado.white_pos || [0, 0];
@@ -215,8 +219,15 @@ function showGameOver(estado) {
   const title = document.getElementById('game-over-title');
   const content = document.getElementById('game-over-content');
   let resultText = 'EMPATE';
-  if (estado.winner === 'white') resultText = 'GANA JUGADOR PLATEADO';
-  if (estado.winner === 'black') resultText = 'GANA JUGADOR DORADO';
+  if (estado.winner === 'white') {
+    resultText = 'GANA JUGADOR PLATEADO';
+    loseSound.play().catch(() => {});
+  } else if (estado.winner === 'black') {
+    resultText = 'GANA JUGADOR DORADO';
+    victorySound.play().catch(() => {});
+  } else {
+    victorySound.play().catch(() => {});
+  }
   title.textContent = resultText;
   content.innerHTML = `
     <div class="result-row"><span>Plateado</span><span>${estado.white_points} pts</span></div>

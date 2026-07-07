@@ -47,6 +47,14 @@
   padding: 7px 14px;
 }
 
+#btn-custom-heuristic {
+  min-width: 142px;
+}
+
+#btn-custom-heuristic span {
+  white-space: nowrap;
+}
+
 .custom-modal-card {
   width: min(620px, 92vw);
   max-height: 86vh;

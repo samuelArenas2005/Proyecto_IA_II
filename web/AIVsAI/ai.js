@@ -29,10 +29,25 @@ const potionSound = new Audio(`${SOUND_BASE}energy.mp3`);
 const snitchSound = new Audio(`${SOUND_BASE}coin.mp3`);
 const victorySound = new Audio(`${SOUND_BASE}victory.mp3`);
 const loseSound = new Audio(`${SOUND_BASE}lose.mp3`);
+const bgTracks = [`${SOUND_BASE}bg_1.mp3`, `${SOUND_BASE}bg_2.mp3`, `${SOUND_BASE}bg_3.mp3`];
+const bgAudio = new Audio(bgTracks[0]);
+let bgTrackIndex = 0;
 potionSound.volume = 0.55;
 snitchSound.volume = 0.55;
 victorySound.volume = 0.7;
 loseSound.volume = 0.7;
+bgAudio.volume = 0.09;
+bgAudio.addEventListener('ended', () => {
+  bgTrackIndex = (bgTrackIndex + 1) % bgTracks.length;
+  bgAudio.src = bgTracks[bgTrackIndex];
+  bgAudio.play().catch(() => {});
+});
+
+function startBackgroundMusic() {
+  if (bgAudio.paused) {
+    bgAudio.play().catch(() => {});
+  }
+}
 
 function getLegalMoves(estado, turn = estado.current_turn || 'white') {
   const whitePos = estado.white_pos || [0, 0];
@@ -371,6 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('btn-ai-play').addEventListener('click', () => {
     if (currentGameState?.game_over) return;
+    startBackgroundMusic();
     autoPlaying = true;
     clearTimeout(aiTimer);
     processAIMove();
@@ -403,5 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       hoverSound.currentTime = 0;
       hoverSound.play().catch(() => {});
     });
+    btn.addEventListener('click', startBackgroundMusic);
   });
+  document.addEventListener('click', startBackgroundMusic, { once: true });
 });

@@ -22,7 +22,7 @@
         <h2 class="brand-subtitle">TORNEO DE HEURISTICAS</h2>
       </header>
 
-      <div class="tournament-grid">
+      <div class="tournament-view tournament-view--selection" id="tournament-selection-view">
         <section class="tournament-panel tournament-panel--setup">
           <h3 class="editor-section-title">CONFIGURACION</h3>
           <div class="tournament-controls">
@@ -46,7 +46,7 @@
           </div>
 
           <button class="menu-btn custom-heuristic-button" id="btn-custom-heuristic">
-            <span class="menu-btn__label">+ HEURÍSTICA PERSONALIZADA</span>
+            <span class="menu-btn__label">+ HEURISTICA PERSONALIZADA</span>
           </button>
 
           <div class="heuristic-list" id="heuristic-list"></div>
@@ -56,20 +56,30 @@
             <button class="menu-btn menu-btn--back" onclick="irAlMenu()"><span class="menu-btn__label">REGRESAR</span></button>
           </div>
         </section>
-
-        <section class="tournament-panel tournament-panel--results">
-          <h3 class="editor-section-title">RESULTADOS</h3>
-          <div class="champion-box" id="champion-box">Selecciona heuristicas para iniciar.</div>
-          <div class="rounds" id="rounds"></div>
-        </section>
       </div>
+
+      <section class="tournament-view tournament-view--bracket" id="tournament-bracket-view" hidden>
+        <div class="bracket-toolbar">
+          <div>
+            <h3 class="editor-section-title" id="bracket-title">BRACKET</h3>
+            <p class="bracket-status" id="champion-box">Selecciona heuristicas para iniciar.</p>
+          </div>
+          <div class="bracket-toolbar-actions">
+            <button class="menu-btn menu-btn--back" id="btn-back-selection"><span class="menu-btn__label">NUEVO TORNEO</span></button>
+            <button class="menu-btn menu-btn--back" onclick="irAlMenu()"><span class="menu-btn__label">REGRESAR</span></button>
+          </div>
+        </div>
+        <div class="bracket-scroll">
+          <div class="bracket-board" id="bracket-board"></div>
+        </div>
+      </section>
     </section>
   </main>
 
   <div class="toast" id="menu-toast"></div>
   <div id="heuristic-modal" class="modal-overlay">
     <form class="custom-modal-card" id="custom-heuristic-form">
-      <h2 class="modal-title">Nueva heurística</h2>
+      <h2 class="modal-title">Nueva heuristica</h2>
       <label class="custom-name-label">Nombre <input id="custom-heuristic-name" maxlength="40" required /></label>
       <div class="custom-weight-grid" id="custom-weight-grid"></div>
       <div class="custom-modal-actions">
@@ -77,6 +87,15 @@
         <button type="button" class="menu-btn menu-btn--back" id="btn-close-heuristic-modal"><span class="menu-btn__label">CANCELAR</span></button>
       </div>
     </form>
+  </div>
+
+  <div id="winner-modal" class="modal-overlay">
+    <div class="winner-modal-card">
+      <p class="winner-kicker">CAMPEONA DEL TORNEO</p>
+      <img id="winner-symbol" class="winner-symbol" src="../assets/NewSprints/personalizated.png" alt="" />
+      <h2 class="modal-title" id="winner-title">Heuristica ganadora</h2>
+      <button type="button" class="menu-btn" id="btn-close-winner-modal"><span class="menu-btn__label">CERRAR</span></button>
+    </div>
   </div>
 
   <script src="/eel.js" onerror="console.warn('eel.js no disponible')"></script>

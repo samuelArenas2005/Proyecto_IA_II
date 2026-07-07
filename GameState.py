@@ -21,6 +21,7 @@ class GameState():
         self.white_points = _get_state_field(state, "white_points")   # IA (maquina)
         self.black_points = _get_state_field(state, "black_points")   # Jugador
         self.current_turn = _get_state_field(state, "current_turn")   # La IA es el turno white y la del jugador es black (opcional)
+        self.nivel = _get_state_field(state, "nivel") or "principiante"
 
     @staticmethod
     def _verify_state_values(state):
@@ -69,6 +70,7 @@ class GameState():
             "white_points": self.white_points,
             "black_points": self.black_points,
             "current_turn": self.current_turn,
+            "nivel": self.nivel,
             "game_over": getattr(self, "game_over", False),
             "winner": getattr(self, "winner", None)
         }

@@ -49,7 +49,7 @@ async function processAIMove() {
     return;
   }
 
-  const depth = NIVEL_MAP[currentGameState.nivel]?.depth;
+  const depth = NIVEL_MAP[currentGameState.nivel]?.depth ?? 2;
   mostrarToast('IA calculando movimiento...', 1800);
 
   // Ask the backend for the best move

@@ -108,11 +108,23 @@ Juan David Rincón & 202332032-3743\\
 
 \section{Contexto del problema}
 
-Knight Energy es un juego adversarial entre dos caballos sobre un tablero de ajedrez. La máquina juega con el caballo blanco (\textit{white}) y el jugador humano con el caballo negro (\textit{black}). El objetivo de la inteligencia artificial es elegir movimientos que aumenten sus posibilidades de terminar la partida con más puntos que el rival.
+Knight Energy es un juego adversarial entre dos caballos sobre un tablero de ajedrez. La máquina juega con el caballo blanco (\textit{white}) y el jugador humano con el caballo negro (\textit{black}). En la interfaz del juego, esta representación lógica se acompaña con una identidad visual: el caballo del jugador se muestra dorado y el caballo controlado por la inteligencia artificial se muestra con apariencia plateada, manteniendo internamente la distinción blanco/negro para el cálculo de turnos, puntos y movimientos.
+
+Cada caballo se desplaza siguiendo el movimiento en forma de ``L'' propio del ajedrez, consume energía al moverse y puede recolectar elementos del tablero que modifican el estado de la partida. Las estrellas aumentan la puntuación y las pociones permiten recuperar energía, por lo que una buena decisión no depende únicamente del puntaje actual, sino también de las opciones futuras que quedan disponibles después de cada movimiento.
+
+El objetivo de la inteligencia artificial es elegir movimientos que aumenten sus posibilidades de terminar la partida con más puntos que el rival. Para lograrlo, el proyecto utiliza minimax con poda alfa-beta y una profundidad limitada según la dificultad seleccionada. Debido a que no siempre es posible explorar todo el árbol de juego hasta un estado terminal, se define una función heurística capaz de estimar qué tan favorable es un estado intermedio para la máquina.
 
 \begin{tcolorbox}[colframe=KEGold,title=\textbf{Idea central},coltitle=KEDark,colbacktitle=KEGold!35]
 El algoritmo minimax necesita una forma de valorar los estados del juego. Cuando el estado es final, se usa una función de utilidad. Cuando el estado no es final pero se alcanzó la profundidad límite del árbol, se usa una función heurística ponderada.
 \end{tcolorbox}
+
+\section{Repositorio del proyecto}
+
+El código fuente completo de Knight Energy, incluyendo la implementación del estado del juego, la interfaz, el algoritmo minimax y la función heurística, se encuentra disponible en el siguiente repositorio:
+
+\begin{center}
+\href{https://github.com/samuelArenas2005/Proyecto_IA_II}{samuelArenas2005/Proyecto\_IA\_II}
+\end{center}
 
 \section{Función de utilidad}
 
@@ -234,5 +246,9 @@ En los turnos de \textit{white}, minimax maximiza el valor del estado. En los tu
 \section{Conclusión}
 
 La heurística ponderada permite que la IA tome decisiones más estratégicas en estados no terminales. La función no solo considera los puntos actuales, sino también la energía, la movilidad, las oportunidades inmediatas de capturar estrellas o recuperar energía, y el riesgo de quedar bloqueado. Esto produce una evaluación más completa del estado del juego y mejora la calidad de las decisiones tomadas por minimax.
+
+Además, la separación entre la representación visual y la representación lógica del juego facilita la implementación del algoritmo. Aunque en pantalla el jugador se identifica con el caballo dorado y la IA con el caballo plateado, internamente se conservan los roles \textit{black} y \textit{white}. Esta decisión permite que las funciones de utilidad, heurística y generación de movimientos trabajen con una estructura clara y consistente.
+
+En conjunto, la función heurística actúa como una aproximación práctica al valor real de una posición cuando la búsqueda no puede llegar hasta el final de la partida. Gracias a esta evaluación, la IA puede priorizar movimientos que no solo generan beneficios inmediatos, sino que también conservan energía, mejoran su movilidad y reducen el riesgo de quedar en desventaja frente al jugador.
 
 \end{document}

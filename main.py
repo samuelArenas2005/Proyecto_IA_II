@@ -35,7 +35,11 @@ def close_window():
 
 @eel.expose
 def obtener_movimiento_ia(estado, profundidad):
-    
+    try:
+        profundidad = int(profundidad)
+    except (TypeError, ValueError):
+        profundidad = 2
+
     print(profundidad)
     
     state_obj = normalize_state(estado)

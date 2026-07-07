@@ -213,6 +213,8 @@ Bloqueo & 50 & Anticipa el riesgo de perder turnos y recibir penalizaciones.\\
 
 \section{Fragmento de implementación}
 
+El siguiente fragmento resume la parte final de la función heurística y muestra cómo se combinan los componentes ponderados. No corresponde a la función completa, ya que en la implementación real también se calculan previamente valores auxiliares como \texttt{star\_options\_diff}, \texttt{energy\_options\_diff} y \texttt{blocked\_score}. En particular, el código completo incluye el cálculo de las estrellas alcanzables por cada jugador, las casillas de energía alcanzables y la penalización o recompensa asociada a que un jugador quede bloqueado sin movimientos efectivos.
+
 \begin{lstlisting}[style=kePython]
 def heuristica_utility_function(self):
     if self.is_end_game():
